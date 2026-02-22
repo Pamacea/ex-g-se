@@ -5,6 +5,50 @@ All notable changes to EX-G-SE will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2] - 2025-02-22
+
+### Fixed
+- 🔧 **Replaced device_query with rdev** for keyboard hooks
+  - device_query had X11 dependency on Linux causing build failures
+  - rdev 0.6.0 from GitHub uses platform-native APIs
+  - Event-driven architecture (vs polling in device_query)
+- 📦 **Removed Linux support** due to system dependencies (libudev, wayland, x11)
+  - CI/CD now builds only for macOS and Windows
+  - README updated to reflect platform support
+  - Future Linux contributions welcome!
+
+### Changed
+- Keyboard hook implementation: `device_query` → `rdev`
+  - Updated API: `Keycode::LControl` → `Key::ControlLeft`
+  - Event-based callbacks instead of polling
+  - Cleaner thread management
+- Platform matrix: macOS (Apple Silicon) + Windows (x64) only
+
+### Technical
+- Dependencies: Removed device_query, added rdev (git)
+- File system watching: Platform-specific implementations
+  - macOS: notify with macos_fsevent
+  - Windows: notify (default features)
+  - Linux: inotify (removed)
+- Removed HashSet import (no longer needed)
+
+## [0.3.1] - 2025-02-22
+
+### Fixed
+- 🔧 **Platform-specific file system watching** to avoid X11 dependency on Linux
+  - macOS: notify with macos_fsevent feature only
+  - Windows: notify with default features
+  - Linux: inotify directly (native, no X11 dependency chain)
+
+### Changed
+- Updated fs_watcher.rs with platform-specific implementations
+- Fixed notify v6 API usage (Config instead of Duration)
+- Fixed channel type mismatch in main.rs
+
+### Technical
+- X11 dependency completely removed from Linux build
+- x11rb remains (from arboard for clipboard, but doesn't need libX11)
+
 ## [0.3.0] - 2025-02-22
 
 ### Added

@@ -7,17 +7,16 @@
 // - Global keyboard input (trigger detection)
 //
 // PLATFORM REQUIREMENTS:
-// - Linux: Optional screenshot tools (gnome-screenshot, scrot, grim)
+// - Linux: Uses evdev (no X11 dependency), optional screenshot tools (gnome-screenshot, scrot, grim)
 // - macOS: Accessibility permissions for keyboard hooks
 // - Windows: Works out of the box
 
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use device_query::{DeviceQuery, DeviceState, Keycode};
+use rdev::{Event, EventType, Key};
 use serde::Serialize;
 use serde_json::json;
 use ex_g_se::{capture_screenshot, fs_watcher};
-use std::collections::HashSet;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
@@ -63,7 +62,7 @@ struct ExGSeEngine {
     events: Vec<LogEntry>,
     start_time: DateTime<Utc>,
     running: Arc<AtomicBool>,
-    trigger_keys: HashSet<Keycode>,
+    trigger_keys: Vec<Key>,
     screenshot_interval_secs: u64,
 }
 
@@ -74,7 +73,7 @@ impl ExGSeEngine {
             start_time: Utc::now(),
             running: Arc::new(AtomicBool::new(true)),
             // Trigger: Ctrl+Shift+X
-            trigger_keys: HashSet::from([Keycode::LControl, Keycode::LShift, Keycode::X]),
+            trigger_keys: vec![Key::ControlLeft, Key::ShiftLeft, Key::KeyX],
             screenshot_interval_secs: 30,
         }
     }
@@ -263,33 +262,40 @@ impl ExGSeEngine {
         let trigger_keys = self.trigger_keys.clone();
 
         tokio::task::spawn_blocking(move || {
-            let device_state = DeviceState::new();
-            let mut pressed_keys: HashSet<Keycode> = HashSet::new();
+            let mut pressed_keys: Vec<Key> = Vec::new();
 
             eprintln!("[HOOK] Keyboard hook active - Press Ctrl+Shift+X to trigger");
 
-            while running.load(Ordering::Relaxed) {
-                let keys = device_state.get_keys();
-                let keys_set: HashSet<Keycode> = keys.into_iter().collect();
-
-                // Check for newly pressed keys
-                for key in keys_set.iter() {
-                    if !pressed_keys.contains(key) {
-                        pressed_keys.insert(*key);
-
-                        // Check if all trigger keys are pressed
-                        if trigger_keys.iter().all(|k| pressed_keys.contains(k)) {
-                            eprintln!("\n[TRIG] Manual trigger activated!");
-                            // Note: For proper event logging, we'd need a channel that works
-                            // from blocking contexts. For now, just print the message.
-                        }
-                    }
+            let callback = move |event: Event| {
+                // Check if we should stop
+                if !running.load(Ordering::Relaxed) {
+                    std::process::exit(0);
                 }
 
-                // Remove released keys
-                pressed_keys = pressed_keys.intersection(&keys_set).cloned().collect();
+                match event.event_type {
+                    EventType::KeyPress(key) => {
+                        // Add key if not already pressed
+                        if !pressed_keys.contains(&key) {
+                            pressed_keys.push(key);
 
-                std::thread::sleep(Duration::from_millis(50));
+                            // Check if all trigger keys are pressed
+                            if trigger_keys.iter().all(|k| pressed_keys.contains(k)) {
+                                eprintln!("\n[TRIG] Manual trigger activated!");
+                                // Note: For proper event logging, we'd need a channel that works
+                                // from blocking contexts. For now, just print the message.
+                            }
+                        }
+                    }
+                    EventType::KeyRelease(key) => {
+                        // Remove the released key
+                        pressed_keys.retain(|k| *k != key);
+                    }
+                    _ => {}
+                }
+            };
+
+            if let Err(e) = rdev::listen(callback) {
+                eprintln!("Keyboard hook error: {:?}", e);
             }
         });
 

@@ -1,10 +1,10 @@
-# EX-G-SE v0.3.0
+# EX-G-SE v0.3.2
 
 > **AI-powered shadow logging observability for development sessions**
 
 ```
 .--------------------------------------------------------------.
-|  EX-G-SE  v0.3.0  |  GHOST OBSERVABILITY + AI ANALYSIS       |
+|  EX-G-SE  v0.3.2  |  GHOST OBSERVABILITY + AI ANALYSIS       |
 '--------------------------------------------------------------'
 ```
 
@@ -182,16 +182,13 @@ The `scenes.json` file contains timeline data for video generation:
 
 | Platform | Architecture | Status |
 |----------|-------------|--------|
-| Linux    | x64         | ✅ Stable |
-| Windows  | x64         | ✅ Stable |
 | macOS    | Apple Silicon | ✅ Stable |
+| Windows  | x64         | ✅ Stable |
+| Linux    | x64         | ❌ Unsupported (requires system deps: libudev, wayland) |
+
+**Note:** Linux support is temporarily disabled. Contributions welcome!
 
 ## Requirements
-
-### Linux
-```bash
-sudo apt-get install libx11-dev libxtst-dev libxkbcommon-dev
-```
 
 ### macOS
 Grant Accessibility and Screen Recording permissions to your terminal.
