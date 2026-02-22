@@ -1,10 +1,10 @@
-# EX-G-SE v0.3.3
+# EX-G-SE v0.3.4
 
 > **AI-powered shadow logging observability for development sessions**
 
 ```
 .--------------------------------------------------------------.
-|  EX-G-SE  v0.3.3  |  GHOST OBSERVABILITY + AI ANALYSIS       |
+|  EX-G-SE  v0.3.4  |  GHOST OBSERVABILITY + AI ANALYSIS       |
 '--------------------------------------------------------------'
 ```
 
@@ -195,6 +195,8 @@ Grant Accessibility and Screen Recording permissions to your terminal.
 
 ### Windows
 No additional requirements.
+
+**Note:** PowerShell 7+ recommended for best experience. Both `.cmd` and `.ps1` scripts are included.
 
 ## Security Details
 

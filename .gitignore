@@ -1,5 +1,8 @@
-# Binaries
-bin/
+# Binaries (keep scripts, ignore compiled binaries)
+bin/*.exe
+bin/*.dll
+bin/*.dylib
+bin/*.so
 *.exe
 *.dll
 *.dylib

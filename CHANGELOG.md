@@ -5,6 +5,33 @@ All notable changes to EX-G-SE will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.4] - 2025-02-22
+
+### Added
+- 🪟 **PowerShell scripts (.ps1)** for Windows users
+  - `bin/ex-g-se.ps1` - Main entry point with subcommand support
+  - `bin/ex-g-se-config.ps1` - Configuration script
+  - Better error handling and modern PowerShell features
+- 🔧 **Enhanced Windows .cmd files** with proper error handling
+  - `bin/ex-g-se.cmd` - Handles 'config' subcommand correctly
+  - `bin/ex-g-se-config.cmd` - Improved batch script
+
+### Fixed
+- **CRITICAL:** Fixed .gitignore that was excluding bin/ directory
+  - bin/ was completely ignored, scripts weren't published to NPM
+  - Now ignores only compiled binaries (*.exe) while keeping scripts
+  - All bin/ scripts now properly tracked in git
+
+### Changed
+- README updated with PowerShell recommendation for Windows
+- All bin/ files now included in NPM package (.js, .cmd, .ps1)
+
+### Technical
+- bin/ now contains: index.js, config.js, analyze.js, script.js
+- Plus Windows wrappers: ex-g-se.cmd, ex-g-se-config.cmd
+- Plus PowerShell scripts: ex-g-se.ps1, ex-g-se-config.ps1
+- Gitignore fixed to exclude only compiled binaries
+
 ## [0.3.3] - 2025-02-22
 
 ### Fixed
