@@ -519,6 +519,7 @@ dependencies = [
  "device_query",
  "image",
  "inotify 0.10.2",
+ "mio 0.8.11",
  "notify",
  "objc",
  "reqwest",

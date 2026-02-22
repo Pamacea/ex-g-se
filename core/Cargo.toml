@@ -1,6 +1,6 @@
 [package]
 name = "ex-g-se"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2021"
 description = "EX-G-SE: Shadow Logging Core Engine with AI Analysis"
 authors = ["EX-G-SE Team"]
@@ -40,20 +40,20 @@ async-trait = "0.1"
 # UUID for session IDs
 uuid = { version = "1.6", features = ["v4", "serde"] }
 
-# File system watching - platform-specific to avoid x11rb dependency
-[target.'cfg(not(target_os = "linux"))'.dependencies]
-notify = "6"
-
-[target.'cfg(target_os = "linux")'.dependencies]
-inotify = "0.10"
-
+# Platform-specific file system watching (NO x11 dependency)
 [target.'cfg(target_os = "macos")'.dependencies]
+notify = { version = "6", default-features = false, features = ["macos_fsevent"] }
 core-graphics = "0.23"
 objc = "0.2"
 cocoa = "0.25"
 
 [target.'cfg(target_os = "windows")'.dependencies]
+notify = "6"
 winapi = { version = "0.3", features = ["winuser", "wingdi"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+inotify = "0.10"
+mio = { version = "0.8", features = ["os-poll"] }
 
 [dev-dependencies]
 # For testing

@@ -14,16 +14,15 @@
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use device_query::{DeviceQuery, DeviceState, Keycode};
-use notify::{RecursiveMode, Watcher};
 use serde::Serialize;
 use serde_json::json;
-use ex_g_se::capture_screenshot;
+use ex_g_se::{capture_screenshot, fs_watcher};
 use std::collections::HashSet;
 use std::fs::File;
 use std::io::Write;
-use std::path::Path;
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, mpsc as std_mpsc};
 use std::time::Duration;
 use tokio::signal::ctrl_c;
 use tokio::sync::mpsc;
@@ -113,46 +112,44 @@ impl ExGSeEngine {
 
     /// File system watcher
     async fn watch_fs(&self, tx: mpsc::UnboundedSender<LogEntry>) -> Result<()> {
-        let (watcher_tx, mut watcher_rx) = mpsc::unbounded_channel();
-
-        let mut watcher = notify::recommended_watcher(move |res| {
-            if let Ok(event) = res {
-                let _ = watcher_tx.send(event);
-            }
-        })?;
-
-        watcher.watch(Path::new("."), RecursiveMode::Recursive)?;
-
         let running = self.running.clone();
+        let (fs_tx, fs_rx) = std_mpsc::channel();
 
+        // Spawn fs watcher in blocking thread
+        std::thread::spawn(move || {
+            if let Err(e) = fs_watcher::watch_directory(PathBuf::from("."), fs_tx) {
+                eprintln!("FS watcher error: {}", e);
+            }
+        });
+
+        // Forward fs events to main channel
         tokio::spawn(async move {
             while running.load(Ordering::Relaxed) {
-                if let Some(event) = watcher_rx.recv().await {
-                    // Extract path from event if available
-                    let path = event
-                        .paths
-                        .first()
-                        .and_then(|p| p.to_str())
-                        .unwrap_or("unknown");
+                match fs_rx.recv_timeout(Duration::from_millis(100)) {
+                    Ok(event) => {
+                        // Filter noise (node_modules, .git, target)
+                        let path = event.data["path"].as_str().unwrap_or("unknown");
+                        if path.contains("node_modules")
+                            || path.contains(".git")
+                            || path.contains("target")
+                        {
+                            continue;
+                        }
 
-                    // Filter noise (node_modules, .git, target)
-                    if path.contains("node_modules")
-                        || path.contains(".git")
-                        || path.contains("target")
-                    {
-                        continue;
+                        let entry = LogEntry {
+                            timestamp: Utc::now(),
+                            event_type: "fs_change".to_string(),
+                            data: event.data,
+                        };
+                        let _ = tx.send(entry);
+                        eprint!(".");
                     }
-
-                    let entry = LogEntry {
-                        timestamp: Utc::now(),
-                        event_type: "fs_change".to_string(),
-                        data: json!({
-                            "path": path,
-                            "kind": format!("{:?}", event.kind),
-                        }),
-                    };
-                    let _ = tx.send(entry);
-                    eprint!(".");
+                    Err(std_mpsc::RecvTimeoutError::Timeout) => {
+                        // Continue checking
+                    }
+                    Err(std_mpsc::RecvTimeoutError::Disconnected) => {
+                        break;
+                    }
                 }
             }
         });

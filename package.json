@@ -1,6 +1,6 @@
 {
   "name": "@oalacea/ex-g-se",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "AI-powered shadow logging observability tool for Oalacea",
   "main": "cli/index.js",
   "bin": {

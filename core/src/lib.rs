@@ -5,6 +5,7 @@
 pub mod ai;
 pub mod analyzer;
 pub mod core;
+pub mod fs_watcher;
 pub mod script;
 pub mod screenshot;
 pub mod video_exporter;
@@ -17,6 +18,7 @@ pub use ai::{
 };
 pub use analyzer::{Intent as AnalyzerIntent, KeyMoment as AnalyzerKeyMoment, SessionAnalysis as AnalyzerSessionAnalysis, SessionAnalyzer};
 pub use core::ExGSeEngine;
+pub use fs_watcher::watch_directory;
 pub use screenshot::{capture_active_window, capture_ide_window, capture_screenshot, ScreenshotInfo};
 pub use script::{Script as ScriptScript, ScriptGenerator, TimelineEntry};
 pub use video_exporter::{VideoAssets, VideoAssetsExporter, VideoScene, VideoSettings};

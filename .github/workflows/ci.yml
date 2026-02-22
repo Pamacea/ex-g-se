@@ -27,6 +27,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libxkbcommon-dev pkg-config
+          # Note: Linux build temporarily disabled
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
