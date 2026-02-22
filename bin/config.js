@@ -184,7 +184,7 @@ async function config() {
   console.log('  • AES-256-GCM (chiffrement militaire)');
   console.log('  • scrypt (dérivation de clé, memory-hard)');
   console.log('\n⚠️  Si vous perdez votre mot de passe maître, refaites simplement:');
-  console.log('    npx @oalacea/ex-g-se config\n');
+  console.log('    exg-config\n');
 
   const rl = readline.createInterface({
     input: process.stdin,

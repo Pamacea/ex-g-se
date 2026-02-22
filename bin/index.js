@@ -4,8 +4,12 @@
  * EX-G-SE - Main Entry Point with Secure Decryption
  *
  * Usage:
- *   npx @oalacea/ex-g-se config    Configure AI provider
- *   npx @oalacea/ex-g-se           Start recording (press Ctrl+Shift+X to stop)
+ *   exg-config                   Configure AI provider
+ *   exg                          Start recording (press Ctrl+Shift+X to stop)
+ *
+ * Or via npx:
+ *   npx @oalacea/ex-g-se config
+ *   npx @oalacea/ex-g-se
  *
  * Environment variables (alternative):
  *   EX_G_SE_PROVIDER=openai
@@ -94,7 +98,7 @@ async function loadConfig() {
         console.error('\n❌ Erreur de déchiffrement:', error.message);
       }
       console.error('💡 Si vous avez oublié votre mot de passe, refaites:');
-      console.error('   npx @oalacea/ex-g-se config\n');
+      console.error('   exg-config\n');
       process.exit(1);
     }
   }
@@ -395,10 +399,25 @@ function formatDuration(start, end) {
 // MAIN FLOW
 // ============================================================================
 
+function showHelp() {
+  console.log('\nEX-G-SE v0.3.5 - Ghost Mode Observability\n');
+  console.log('Usage:\n');
+  console.log('  exg config    Configure AI provider (OpenAI, Anthropic, z.ai)');
+  console.log('  exg record    Start recording session (Ctrl+Shift+X to stop)');
+  console.log('  exg           Show this help message\n');
+  console.log('Install:\n');
+  console.log('  npm install -g @oalacea/ex-g-se\n');
+  console.log('Or use npx without installing:\n');
+  console.log('  npx @oalacea/ex-g-se config');
+  console.log('  npx @oalacea/ex-g-se record\n');
+}
+
 async function main() {
-  // Handle subcommand 'config'
+  // Handle commands
   const args = process.argv.slice(2);
-  if (args[0] === 'config') {
+  const command = args[0];
+
+  if (command === 'config') {
     // Execute config.js
     const { execSync } = require('child_process');
     const configPath = path.join(__dirname, 'config.js');
@@ -406,7 +425,14 @@ async function main() {
     return;
   }
 
-  console.log('\nEX-G-SE v0.3.2 - Ghost Mode Observability\n');
+  if (command === 'record' || !command) {
+    // Recording mode
+    console.log('\nEX-G-SE v0.3.5 - Ghost Mode Observability\n');
+  } else {
+    console.error(`\n❌ Unknown command: ${command}\n`);
+    showHelp();
+    process.exit(1);
+  }
 
   // Load config
   const config = await loadConfig();

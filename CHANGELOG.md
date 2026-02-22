@@ -5,6 +5,33 @@ All notable changes to EX-G-SE will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.5] - 2025-02-22
+
+### Added
+- ⚡ **New CLI commands** with subcommands
+  - `exg config` - Configure AI provider
+  - `exg record` - Start recording session
+  - `exg` - Show help message
+  - Much cleaner than separate commands
+
+### Changed
+- Clean architecture: single `exg` command with subcommands
+- Removed redundant exg-config files
+- Updated all help messages and documentation
+- PowerShell and CMD scripts updated for subcommands
+
+### Usage
+```bash
+npm install -g @oalacea/ex-g-se
+exg config
+exg record
+```
+
+### Technical
+- bin/index.js now handles: no args (help), 'config', 'record'
+- Subcommand routing in index.js
+- Cleaner CLI experience
+
 ## [0.3.4] - 2025-02-22
 
 ### Added

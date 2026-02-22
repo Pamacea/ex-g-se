@@ -6,10 +6,15 @@
 // - Screenshots (interval-based)
 // - Global keyboard input (trigger detection)
 //
-// PLATFORM REQUIREMENTS:
-// - Linux: Uses evdev (no X11 dependency), optional screenshot tools (gnome-screenshot, scrot, grim)
-// - macOS: Accessibility permissions for keyboard hooks
-// - Windows: Works out of the box
+// PLATFORMS: macOS (Apple Silicon), Windows (x64)
+//
+// Usage:
+//   exg                  Start recording (Ctrl+Shift+X to stop)
+//   exg-config           Configure AI provider
+//
+// Or via npx:
+//   npx @oalacea/ex-g-se
+//   npx @oalacea/ex-g-se config
 
 use anyhow::Result;
 use chrono::{DateTime, Utc};
