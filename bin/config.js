@@ -141,6 +141,9 @@ function prompt(rl, question) {
 
 function promptPassword(rl, question) {
   return new Promise((resolve) => {
+    // Pause readline to avoid conflicts
+    rl.pause();
+
     process.stdout.write(question);
     process.stdin.setRawMode(true);
     process.stdin.resume();
@@ -151,10 +154,20 @@ function promptPassword(rl, question) {
     const onData = (char) => {
       // Enter/Return - submit password
       if (char === '\r' || char === '\n') {
+        // Drain any remaining input
         process.stdin.setRawMode(false);
+        const buffer = Buffer.alloc(1024);
+        try {
+          process.stdin.read(buffer);
+        } catch (e) {
+          // Ignore
+        }
         process.stdin.pause();
         process.stdin.removeListener('data', onData);
         process.stdout.write('\n');
+
+        // Resume readline for next prompt
+        rl.resume();
         resolve(password);
         return;
       }

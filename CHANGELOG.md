@@ -5,6 +5,21 @@ All notable changes to EX-G-SE will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.8] - 2025-02-22
+
+### Fixed
+- 🔧 **CRITICAL FIX: stdin raw mode conflict**
+  - Fixed issue where pressing Enter after API key would skip to end
+  - Added proper readline pause/resume handling
+  - Drain stdin buffer after password input to prevent stray characters
+  - Fixed interaction between raw mode and readline prompts
+
+### Technical
+- promptPassword() now pauses readline before raw mode
+- Properly drains stdin buffer after capturing password
+- Resumes readline for subsequent prompts
+- Prevents "ghost Enter" characters from interfering
+
 ## [0.3.7] - 2025-02-22
 
 ### Added
