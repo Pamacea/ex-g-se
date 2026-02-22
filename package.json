@@ -1,0 +1,38 @@
+{
+  "name": "@oalacea/ex-g-se",
+  "version": "0.2.0",
+  "description": "Shadow logging observability tool for Oalacea",
+  "main": "cli/index.js",
+  "bin": {
+    "ex-g-se": "./bin/index.js"
+  },
+  "files": [
+    "bin/*"
+  ],
+  "scripts": {
+    "dev": "bash scripts/dev.sh",
+    "build": "bash scripts/build-all.sh",
+    "build:rust": "cd core && cargo build --release",
+    "test": "npm run test:rust",
+    "test:rust": "cd core && cargo test",
+    "lint": "npm run lint:rust",
+    "lint:rust": "cd core && cargo fmt --check && cargo clippy",
+    "release": "bash scripts/release.sh"
+  },
+  "keywords": [
+    "observability",
+    "logging",
+    "shadow-logging",
+    "oalacea",
+    "cli"
+  ],
+  "author": "Oalacea",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/oalacea/ex-g-se.git"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

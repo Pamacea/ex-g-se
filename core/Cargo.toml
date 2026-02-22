@@ -1,0 +1,45 @@
+[package]
+name = "ex-g-se"
+version = "0.2.0"
+edition = "2021"
+description = "EX-G-SE: Shadow Logging Core Engine"
+authors = ["EX-G-SE Team"]
+
+[dependencies]
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Error handling
+anyhow = "1"
+
+# File system watching
+notify = "6"
+
+# Clipboard monitoring
+arboard = "3"
+
+# Keyboard hooks
+device_query = "2"
+
+# Serialization
+serde_json = "1"
+serde = { version = "1", features = ["derive"] }
+
+# Time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+[dev-dependencies]
+# For testing
+tempfile = "3"
+
+# Cross-platform screenshot capture (optional, platform-specific)
+# For Windows: screenshot crate or winsafe
+# For Linux: X11/Wayland bindings
+# For macOS: core-graphics bindings
+# Note: Screenshot functionality is optional and may require additional system libraries
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true

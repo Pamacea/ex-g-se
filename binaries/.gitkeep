@@ -1,0 +1,14 @@
+# Binaries Directory
+
+Platform-specific Rust binaries are placed here during build.
+
+## Binary Names
+
+- `ex-g-se-linux` - Linux x64
+- `ex-g-se-linux-arm64` - Linux ARM64
+- `ex-g-se-macos-intel` - macOS x64
+- `ex-g-se-macos-silicon` - macOS ARM64
+- `ex-g-se-win.exe` - Windows x64
+- `ex-g-se-win-arm64.exe` - Windows ARM64
+
+Binaries are built from the Rust source and included in the npm package.

@@ -1,0 +1,55 @@
+# Binaries
+bin/
+*.exe
+*.dll
+*.dylib
+*.so
+
+# Rust
+core/target/
+core/Cargo.lock
+
+# Node
+cli/node_modules/
+cli/package-lock.json
+cli/yarn.lock
+cli/.yarn/cache
+
+# Logs
+*.log
+raw_logs.json
+*.log.*
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Build artifacts
+dist/
+build/
+*.tar.gz
+*.zip
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Temporary files
+.tmp/
+tmp/
+temp/
+
+# Package locks (keep package-lock.json in root)
+**/package-lock.json

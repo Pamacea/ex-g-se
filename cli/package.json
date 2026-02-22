@@ -1,0 +1,37 @@
+{
+  "name": "@oalacea/ex-g-se-cli",
+  "version": "0.2.0",
+  "description": "CLI wrapper for EX-G-SE",
+  "main": "dist/index.js",
+  "type": "module",
+  "bin": {
+    "ex-g-se": "./bin/index.mjs"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "prepublishOnly": "npm run build",
+    "test": "echo \"No tests yet\"",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "inquirer": "^9.2.23",
+    "ora": "^6.1.0"
+  },
+  "devDependencies": {
+    "@types/inquirer": "^9.0.7",
+    "@types/node": "^20.14.9",
+    "typescript": "^5.5.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "bin/",
+    "dist/",
+    "src/",
+    "package.json",
+    "README.md",
+    "LICENSE"
+  ]
+}
