@@ -5,6 +5,21 @@ All notable changes to EX-G-SE will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.6] - 2025-02-22
+
+### Fixed
+- 🔧 **Fixed API key input bug** in config password prompt
+  - Improved character handling in raw mode
+  - Better support for paste operations
+  - Fixed multi-byte UTF-8 character handling
+  - Better backspace/delete handling
+  - Enhanced error message with character count
+
+### Technical
+- Rewrote `promptPassword()` function with robust character handling
+- Improved control character filtering
+- Better error feedback for debugging
+
 ## [0.3.5] - 2025-02-22
 
 ### Added

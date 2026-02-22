@@ -149,25 +149,44 @@ function promptPassword(rl, question) {
     let password = '';
 
     const onData = (char) => {
-      if (char === '\r' || char === '\n' || char === '\u0004') {
+      // Enter/Return - submit password
+      if (char === '\r' || char === '\n') {
         process.stdin.setRawMode(false);
         process.stdin.pause();
         process.stdin.removeListener('data', onData);
         process.stdout.write('\n');
         resolve(password);
-      } else if (char === '\u0003') {
+        return;
+      }
+
+      // Ctrl+C or Ctrl+D - exit
+      if (char === '\u0003' || char === '\u0004') {
         process.stdout.write('\n');
+        process.stdin.setRawMode(false);
+        process.stdin.pause();
+        process.stdin.removeListener('data', onData);
         rl.close();
         process.exit(0);
-      } else if (char === '\u007f') {
+        return;
+      }
+
+      // Backspace/Delete - remove last character
+      if (char === '\u007f' || char === '\b') {
         if (password.length > 0) {
           password = password.slice(0, -1);
           process.stdout.write('\b \b');
         }
-      } else if (char.length === 1) {
-        password += char;
-        process.stdout.write('*');
+        return;
       }
+
+      // Ignore control characters (except those handled above)
+      if (char.charCodeAt(0) < 32 && char !== '\r' && char !== '\n') {
+        return;
+      }
+
+      // Accept all other characters (including multi-byte UTF-8)
+      password += char;
+      process.stdout.write('*');
     };
 
     process.stdin.on('data', onData);
@@ -208,6 +227,8 @@ async function config() {
 
   if (!apiKey || apiKey.length < 20) {
     console.error('\n❌ API key invalide (doit faire au moins 20 caractères)');
+    console.error('   Caractères reçus: ' + apiKey.length);
+    console.error('   Astuce: Collez votre clé lentement ou tapez-la manuellement\n');
     rl.close();
     process.exit(1);
   }
