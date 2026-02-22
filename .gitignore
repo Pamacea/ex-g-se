@@ -7,7 +7,7 @@ bin/
 
 # Rust
 core/target/
-core/Cargo.lock
+# core/Cargo.lock - removed from gitignore for reproducible builds
 
 # Node
 cli/node_modules/

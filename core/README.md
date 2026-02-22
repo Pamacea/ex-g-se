@@ -1,4 +1,4 @@
-# EX-G-SE Core Engine v0.2.0
+# EX-G-SE Core Engine v0.3.0
 
 The Rust core engine that runs in "Ghost Mode" for shadow logging.
 

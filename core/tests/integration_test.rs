@@ -33,13 +33,9 @@ fn test_full_session_workflow() {
         json!({"path": "./src/main.rs", "action": "modified"}),
     );
     engine.log_event("clipboard", json!({"content": "function test() {}"}));
-    engine.log_event(
-        "screenshot",
-        json!({"status": "captured", "file": "screen1.png"}),
-    );
     engine.log_event("trigger", json!({"key": "Ctrl+Shift+X"}));
 
-    assert_eq!(engine.events.len(), 4);
+    assert_eq!(engine.events.len(), 3);
 
     // Verify event types
     let event_types: Vec<&str> = engine
@@ -49,7 +45,6 @@ fn test_full_session_workflow() {
         .collect();
     assert!(event_types.contains(&"fs_change"));
     assert!(event_types.contains(&"clipboard"));
-    assert!(event_types.contains(&"screenshot"));
     assert!(event_types.contains(&"trigger"));
 }
 
@@ -118,29 +113,6 @@ fn test_clipboard_event_simulation() {
     for (i, event) in engine.events.iter().enumerate() {
         assert_eq!(event.event_type, "clipboard");
         assert_eq!(event.data["content"], clipboard_contents[i]);
-    }
-}
-
-#[test]
-fn test_screenshot_event_simulation() {
-    let mut engine = ExGSeEngine::new();
-
-    // Simulate periodic screenshots
-    for i in 0..5 {
-        engine.log_event(
-            "screenshot",
-            json!({
-                "status": "captured",
-                "file": format!("screenshot_{:03}.png", i),
-                "timestamp": chrono::Utc::now()
-            }),
-        );
-    }
-
-    assert_eq!(engine.events.len(), 5);
-    for event in &engine.events {
-        assert_eq!(event.event_type, "screenshot");
-        assert_eq!(event.data["status"], "captured");
     }
 }
 

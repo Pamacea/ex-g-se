@@ -1,8 +1,8 @@
 [package]
 name = "ex-g-se"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
-description = "EX-G-SE: Shadow Logging Core Engine"
+description = "EX-G-SE: Shadow Logging Core Engine with AI Analysis"
 authors = ["EX-G-SE Team"]
 
 [dependencies]
@@ -11,9 +11,6 @@ tokio = { version = "1", features = ["full"] }
 
 # Error handling
 anyhow = "1"
-
-# File system watching
-notify = "6"
 
 # Clipboard monitoring
 arboard = "3"
@@ -28,15 +25,39 @@ serde = { version = "1", features = ["derive"] }
 # Time handling
 chrono = { version = "0.4", features = ["serde"] }
 
+# Image processing
+image = { version = "0.25", features = ["png"] }
+
+# HTTP client for AI provider APIs
+reqwest = { version = "0.12", features = ["json"] }
+
+# Error handling
+thiserror = "1"
+
+# Async trait support
+async-trait = "0.1"
+
+# UUID for session IDs
+uuid = { version = "1.6", features = ["v4", "serde"] }
+
+# File system watching - platform-specific to avoid x11rb dependency
+[target.'cfg(not(target_os = "linux"))'.dependencies]
+notify = "6"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+inotify = "0.10"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+core-graphics = "0.23"
+objc = "0.2"
+cocoa = "0.25"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+winapi = { version = "0.3", features = ["winuser", "wingdi"] }
+
 [dev-dependencies]
 # For testing
 tempfile = "3"
-
-# Cross-platform screenshot capture (optional, platform-specific)
-# For Windows: screenshot crate or winsafe
-# For Linux: X11/Wayland bindings
-# For macOS: core-graphics bindings
-# Note: Screenshot functionality is optional and may require additional system libraries
 
 [profile.release]
 opt-level = 3

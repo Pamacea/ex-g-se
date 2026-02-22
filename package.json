@@ -1,10 +1,11 @@
 {
   "name": "@oalacea/ex-g-se",
-  "version": "0.2.0",
-  "description": "Shadow logging observability tool for Oalacea",
+  "version": "0.3.0",
+  "description": "AI-powered shadow logging observability tool for Oalacea",
   "main": "cli/index.js",
   "bin": {
-    "ex-g-se": "./bin/index.js"
+    "ex-g-se": "./bin/index.js",
+    "ex-g-se-config": "./bin/config.js"
   },
   "files": [
     "bin/*"
@@ -23,6 +24,10 @@
     "observability",
     "logging",
     "shadow-logging",
+    "ai",
+    "session-analysis",
+    "code-sessions",
+    "developer-tools",
     "oalacea",
     "cli"
   ],

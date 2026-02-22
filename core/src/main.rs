@@ -7,7 +7,7 @@
 // - Global keyboard input (trigger detection)
 //
 // PLATFORM REQUIREMENTS:
-// - Linux: libx11-dev, libxtst-dev, libxrandr-dev (for X11)
+// - Linux: Optional screenshot tools (gnome-screenshot, scrot, grim)
 // - macOS: Accessibility permissions for keyboard hooks
 // - Windows: Works out of the box
 
@@ -17,6 +17,7 @@ use device_query::{DeviceQuery, DeviceState, Keycode};
 use notify::{RecursiveMode, Watcher};
 use serde::Serialize;
 use serde_json::json;
+use ex_g_se::capture_screenshot;
 use std::collections::HashSet;
 use std::fs::File;
 use std::io::Write;
@@ -233,33 +234,24 @@ impl ExGSeEngine {
                     break;
                 }
 
-                // Platform-specific screenshot handling
-                #[cfg(target_os = "windows")]
-                let screenshot_result = capture_screenshot_windows();
-
-                #[cfg(target_os = "linux")]
-                let screenshot_result = capture_screenshot_linux();
-
-                #[cfg(target_os = "macos")]
-                let screenshot_result = capture_screenshot_macos();
-
-                #[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
-                let screenshot_result: Result<String, String> =
-                    Err("Unsupported platform".to_string());
-
-                match screenshot_result {
-                    Ok(path) => {
+                match capture_screenshot() {
+                    Ok(info) => {
                         let entry = LogEntry {
                             timestamp: Utc::now(),
                             event_type: "screenshot".to_string(),
-                            data: json!({ "path": path }),
+                            data: json!({
+                                "path": info.path,
+                                "width": info.width,
+                                "height": info.height,
+                                "size": info.size,
+                            }),
                         };
-                        eprintln!("\n[SHOT] Screenshot saved: {}", path);
+                        eprintln!("\n[SHOT] Screenshot saved: {} ({}x{})", info.path, info.width, info.height);
                         let _ = tx.send(entry);
                     }
                     Err(e) => {
-                        // Silently fail for now - screenshot is optional
-                        eprintln!("\n[ERROR] Screenshot failed: {}", e);
+                        // Screenshot is optional - log but don't crash
+                        eprintln!("\n[WARN] Screenshot failed: {}", e);
                     }
                 }
             }
@@ -345,33 +337,6 @@ impl ExGSeEngine {
 
         Ok(())
     }
-}
-
-// ============================================================================
-// Platform-specific screenshot implementations
-// ============================================================================
-
-#[cfg(target_os = "windows")]
-fn capture_screenshot_windows() -> Result<String, String> {
-    // Windows screenshot implementation using winsafe or screenshot crate
-    // For now, return a placeholder - actual implementation would use:
-    // - screenshot crate
-    // - winsafe for direct Win32 API calls
-    Err("Windows screenshot implementation pending".to_string())
-}
-
-#[cfg(target_os = "linux")]
-fn capture_screenshot_linux() -> Result<String, String> {
-    // Linux requires X11 or Wayland
-    // Could use: image::codecs::png or external tool like scrot
-    Err("Linux screenshot requires X11/Wayland libs - install libx11-dev libxtst-dev".to_string())
-}
-
-#[cfg(target_os = "macos")]
-fn capture_screenshot_macos() -> Result<String, String> {
-    // macOS requires Accessibility permissions
-    // Could use CGDisplayCreateImage from core-graphics crate
-    Err("macOS screenshot requires Accessibility permissions".to_string())
 }
 
 // ============================================================================
