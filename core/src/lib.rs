@@ -4,6 +4,7 @@
 
 pub mod ai;
 pub mod analyzer;
+pub mod cli;
 pub mod core;
 pub mod fs_watcher;
 pub mod script;
@@ -17,6 +18,7 @@ pub use ai::{
     create_anthropic_provider, create_openai_provider,
 };
 pub use analyzer::{Intent as AnalyzerIntent, KeyMoment as AnalyzerKeyMoment, SessionAnalysis as AnalyzerSessionAnalysis, SessionAnalyzer};
+pub use cli::CliConfig;
 pub use core::ExGSeEngine;
 pub use fs_watcher::watch_directory;
 pub use screenshot::{capture_active_window, capture_ide_window, capture_screenshot, ScreenshotInfo};

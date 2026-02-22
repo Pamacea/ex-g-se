@@ -1,6 +1,6 @@
 [package]
 name = "ex-g-se"
-version = "0.3.2"
+version = "4.0.0"
 edition = "2021"
 description = "EX-G-SE: Shadow Logging Core Engine with AI Analysis"
 authors = ["EX-G-SE Team"]
@@ -36,6 +36,9 @@ async-trait = "0.1"
 
 # UUID for session IDs
 uuid = { version = "1.6", features = ["v4", "serde"] }
+
+# Home directory detection
+dirs = "5"
 
 # Platform-specific dependencies (macOS and Windows only - Linux support removed due to system dependencies)
 [target.'cfg(target_os = "macos")'.dependencies]

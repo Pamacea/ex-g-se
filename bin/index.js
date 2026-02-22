@@ -1,19 +1,17 @@
 #!/usr/bin/env node
 
 /**
- * EX-G-SE - Main Entry Point with Secure Decryption
+ * EX-G-SE v4.0.0 - Main Entry Point with All Features
  *
- * Usage:
- *   exg-config                   Configure AI provider
- *   exg                          Start recording (press Ctrl+Shift+X to stop)
- *
- * Or via npx:
- *   npx @oalacea/ex-g-se config
- *   npx @oalacea/ex-g-se
- *
- * Environment variables (alternative):
- *   EX_G_SE_PROVIDER=openai
- *   EX_G_SE_API_KEY=sk-...
+ * Commands:
+ *   exg config          Configure AI provider
+ *   exg record          Start recording session
+ *   exg record --label  Record with label
+ *   exg stats           Show session stats
+ *   exg list            List all sessions
+ *   exg search          Search sessions
+ *   exg export          Export session
+ *   exg update          Update to latest version
  */
 
 const { execSync } = require('child_process');
@@ -23,8 +21,25 @@ const os = require('os');
 const path = require('path');
 const readline = require('readline');
 
+// Import chalk for colors (ESM)
+let chalk;
+try {
+  chalk = require('chalk');
+} catch (e) {
+  // Fallback if chalk not available
+  chalk = {
+    green: (t) => `\x1b[32m${t}\x1b[0m`,
+    red: (t) => `\x1b[31m${t}\x1b[0m`,
+    yellow: (t) => `\x1b[33m${t}\x1b[0m`,
+    blue: (t) => `\x1b[34m${t}\x1b[0m`,
+    cyan: (t) => `\x1b[36m${t}\x1b[0m`,
+    gray: (t) => `\x1b[90m${t}\x1b[0m`,
+    bold: (t) => `\x1b[1m${t}\x1b[0m`
+  };
+}
+
 // ============================================================================
-// ENCRYPTION CONFIGURATION (same as config.js)
+// ENCRYPTION CONFIGURATION
 // ============================================================================
 
 const ARGON2_CONFIG = {
@@ -66,44 +81,38 @@ function decrypt(encryptedData, password) {
 }
 
 // ============================================================================
-// CONFIG LOADING (Priority Order)
+// CONFIG LOADING
 // ============================================================================
 
 async function loadConfig() {
-  // 1. Environment Variables (Priority #1 - for CI/CD)
+  // 1. Environment Variables
   const envConfig = loadFromEnv();
   if (envConfig) {
     return envConfig;
   }
 
-  // 2. Encrypted file (Priority #2 - for local dev)
+  // 2. Encrypted file
   const configPath = path.join(os.homedir(), '.config', 'ex-g-se', 'settings.enc');
 
   if (fs.existsSync(configPath)) {
     try {
       const encrypted = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-
-      // Prompt for master password
       const masterPassword = await promptPassword('🔐 Mot de passe maître: ');
-
-      // Decrypt
       const decrypted = decrypt(encrypted, masterPassword);
       const config = JSON.parse(decrypted);
-
       return config;
     } catch (error) {
       if (error.message.includes('Unsupported state')) {
-        console.error('\n❌ Mot de passe incorrect');
+        console.error(chalk.red('❌ Mot de passe incorrect'));
       } else {
-        console.error('\n❌ Erreur de déchiffrement:', error.message);
+        console.error(chalk.red('❌ Erreur de déchiffrement:'), error.message);
       }
-      console.error('💡 Si vous avez oublié votre mot de passe, refaites:');
-      console.error('   exg-config\n');
+      console.error(chalk.gray('💡 Si vous avez oublié votre mot de passe, refaites:'));
+      console.error(chalk.gray('   exg config\n'));
       process.exit(1);
     }
   }
 
-  // 3. No config found
   return null;
 }
 
@@ -181,218 +190,361 @@ function promptPassword(question) {
 }
 
 // ============================================================================
-// SESSION ANALYSIS (Local, no AI needed for basic analysis)
+// SESSION MANAGEMENT
 // ============================================================================
 
-function detectIntents(events) {
-  const intents = [];
-  let currentIntent = null;
-  let intentStart = null;
-  let eventCount = 0;
+function getSessionsDir() {
+  const sessionsDir = path.join(os.homedir(), '.ex-g-se', 'sessions');
+  if (!fs.existsSync(sessionsDir)) {
+    fs.mkdirSync(sessionsDir, { recursive: true });
+  }
+  return sessionsDir;
+}
 
-  events.forEach(event => {
-    const intent = detectIntentFromEvent(event);
+function listSessions() {
+  const sessionsDir = getSessionsDir();
+  const files = fs.readdirSync(sessionsDir)
+    .filter(f => f.endsWith('.json'))
+    .sort()
+    .reverse();
 
-    if (intent !== currentIntent) {
-      if (currentIntent && eventCount > 3) {
-        intents.push({
-          intent: currentIntent,
-          confidence: Math.min(eventCount / 10, 1),
-          start_time: intentStart,
-          end_time: event.ts,
-        });
-      }
-      currentIntent = intent;
-      intentStart = event.ts;
-      eventCount = 1;
+  if (files.length === 0) {
+    console.log(chalk.yellow('\n⚠️  No sessions found\n'));
+    return;
+  }
+
+  console.log(chalk.bold('\n📚 Sessions:\n'));
+
+  files.forEach(file => {
+    const filePath = path.join(sessionsDir, file);
+    const session = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    const startTime = new Date(session.start_time);
+    const label = session.label || chalk.gray('(no label)');
+    const tags = session.tags ? session.tags.join(', ') : '';
+
+    console.log(`  ${chalk.cyan(file.replace('.json', ''))}`);
+    console.log(`    ${chalk.gray('Label:')} ${label}`);
+    if (tags) {
+      console.log(`    ${chalk.gray('Tags:')} ${tags}`);
+    }
+    console.log(`    ${chalk.gray('Date:')} ${startTime.toLocaleString()}`);
+    console.log(`    ${chalk.gray('Events:')} ${session.events?.length || 0}`);
+    console.log('');
+  });
+}
+
+function searchSessions(query) {
+  const sessionsDir = getSessionsDir();
+  const files = fs.readdirSync(sessionsDir)
+    .filter(f => f.endsWith('.json'));
+
+  if (files.length === 0) {
+    console.log(chalk.yellow('\n⚠️  No sessions found\n'));
+    return;
+  }
+
+  console.log(chalk.bold(`\n🔍 Searching for: "${query}"\n`));
+
+  const results = [];
+
+  files.forEach(file => {
+    const filePath = path.join(sessionsDir, file);
+    const session = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+
+    // Search in label, tags
+    const labelMatch = session.label?.toLowerCase().includes(query.toLowerCase());
+    const tagsMatch = session.tags?.some(t => t.toLowerCase().includes(query.toLowerCase()));
+
+    // Search in events
+    const eventsMatch = session.events?.some(e => {
+      const content = JSON.stringify(e).toLowerCase();
+      return content.includes(query.toLowerCase());
+    });
+
+    if (labelMatch || tagsMatch || eventsMatch) {
+      results.push({ file, session, labelMatch, tagsMatch, eventsMatch });
+    }
+  });
+
+  if (results.length === 0) {
+    console.log(chalk.yellow('No matches found\n'));
+    return;
+  }
+
+  console.log(chalk.green(`Found ${results.length} session(s):\n`));
+
+  results.forEach(({ file, session, labelMatch, tagsMatch, eventsMatch }) => {
+    const reasons = [];
+    if (labelMatch) reasons.push('label');
+    if (tagsMatch) reasons.push('tags');
+    if (eventsMatch) reasons.push('events');
+
+    console.log(`  ${chalk.cyan(file.replace('.json', ''))}`);
+    console.log(`    ${chalk.gray('Matched in:')} ${reasons.join(', ')}`);
+    console.log(`    ${chalk.gray('Label:')} ${session.label || '(no label)'}`);
+    console.log('');
+  });
+}
+
+function showSessionStats(sessionId) {
+  const sessionsDir = getSessionsDir();
+
+  if (!sessionId) {
+    // Show stats for most recent session
+    const files = fs.readdirSync(sessionsDir)
+      .filter(f => f.endsWith('.json'))
+      .sort()
+      .reverse();
+
+    if (files.length === 0) {
+      console.log(chalk.yellow('\n⚠️  No sessions found\n'));
+      return;
+    }
+
+    sessionId = files[0].replace('.json', '');
+  }
+
+  const filePath = path.join(sessionsDir, `${sessionId}.json`);
+
+  if (!fs.existsSync(filePath)) {
+    console.error(chalk.red(`\n❌ Session not found: ${sessionId}\n`));
+    process.exit(1);
+  }
+
+  const session = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  const startTime = new Date(session.start_time);
+  const endTime = new Date(session.end_time);
+  const duration = (endTime - startTime) / 1000;
+
+  console.log(chalk.bold('\n📊 Session Statistics\n'));
+  console.log(`  ${chalk.gray('ID:')} ${chalk.cyan(sessionId)}`);
+  console.log(`  ${chalk.gray('Label:')} ${session.label || '(no label)'}`);
+  if (session.tags) {
+    console.log(`  ${chalk.gray('Tags:')} ${session.tags.join(', ')}`);
+  }
+  console.log(`  ${chalk.gray('Duration:')} ${formatDurationSeconds(duration)}`);
+  console.log(`  ${chalk.gray('Start:')} ${startTime.toLocaleString()}`);
+  console.log(`  ${chalk.gray('End:')} ${endTime.toLocaleString()}`);
+
+  const events = session.events || [];
+  console.log(`\n  ${chalk.gray('Total Events:')} ${events.length}`);
+
+  // Breakdown by type
+  const breakdown = {};
+  events.forEach(e => {
+    breakdown[e.type] = (breakdown[e.type] || 0) + 1;
+  });
+
+  console.log(`\n  ${chalk.bold('Event Breakdown:')}`);
+  Object.entries(breakdown).forEach(([type, count]) => {
+    console.log(`    ${type}: ${count}`);
+  });
+
+  // Disk usage
+  const stats = fs.statSync(filePath);
+  console.log(`\n  ${chalk.gray('Disk Usage:')} ${formatBytes(stats.size)}`);
+  console.log('');
+}
+
+// ============================================================================
+// EXPORT FUNCTIONS
+// ============================================================================
+
+function exportSession(sessionId, format) {
+  const sessionsDir = getSessionsDir();
+
+  if (!sessionId) {
+    // Use most recent session
+    const files = fs.readdirSync(sessionsDir)
+      .filter(f => f.endsWith('.json'))
+      .sort()
+      .reverse();
+
+    if (files.length === 0) {
+      console.error(chalk.yellow('\n⚠️  No sessions found\n'));
+      return;
+    }
+
+    sessionId = files[0].replace('.json', '');
+  }
+
+  const filePath = path.join(sessionsDir, `${sessionId}.json`);
+
+  if (!fs.existsSync(filePath)) {
+    console.error(chalk.red(`\n❌ Session not found: ${sessionId}\n`));
+    process.exit(1);
+  }
+
+  const session = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+
+  switch (format.toLowerCase()) {
+    case 'json':
+      exportJson(session, sessionId);
+      break;
+    case 'markdown':
+    case 'md':
+      exportMarkdown(session, sessionId);
+      break;
+    case 'csv':
+      exportCsv(session, sessionId);
+      break;
+    default:
+      console.error(chalk.red(`\n❌ Unknown format: ${format}`));
+      console.error(chalk.gray('Supported formats: json, markdown, csv\n'));
+      process.exit(1);
+  }
+}
+
+function exportJson(session, sessionId) {
+  const outputFile = `${sessionId}_export.json`;
+  fs.writeFileSync(outputFile, JSON.stringify(session, null, 2));
+  console.log(chalk.green(`\n✅ Exported to: ${outputFile}\n`));
+}
+
+function exportMarkdown(session, sessionId) {
+  let md = `# Session: ${sessionId}\n\n`;
+  md += `**Label:** ${session.label || 'No label'}\n`;
+  md += `**Start:** ${new Date(session.start_time).toLocaleString()}\n`;
+  md += `**End:** ${new Date(session.end_time).toLocaleString()}\n`;
+  if (session.tags) {
+    md += `**Tags:** ${session.tags.join(', ')}\n`;
+  }
+  md += `\n---\n\n## Events\n\n`;
+
+  const events = session.events || [];
+  events.slice(0, 100).forEach((e, i) => {
+    md += `### ${i + 1}. ${e.type}\n`;
+    md += `**Time:** ${e.ts}\n\n`;
+    md += `\`\`\`json\n${JSON.stringify(e.data, null, 2)}\n\`\`\`\n\n`;
+  });
+
+  if (events.length > 100) {
+    md += `\n*_${events.length - 100} more events not shown_*\n`;
+  }
+
+  const outputFile = `${sessionId}_export.md`;
+  fs.writeFileSync(outputFile, md);
+  console.log(chalk.green(`\n✅ Exported to: ${outputFile}\n`));
+}
+
+function exportCsv(session, sessionId) {
+  const events = session.events || [];
+  let csv = 'timestamp,type,data\n';
+
+  events.forEach(e => {
+    const data = JSON.stringify(e.data).replace(/"/g, '""');
+    csv += `${e.ts},${e.type},"${data}"\n`;
+  });
+
+  const outputFile = `${sessionId}_export.csv`;
+  fs.writeFileSync(outputFile, csv);
+  console.log(chalk.green(`\n✅ Exported to: ${outputFile}\n`));
+}
+
+// ============================================================================
+// CONFIG LIST COMMAND
+// ============================================================================
+
+async function listConfig() {
+  const configPath = path.join(os.homedir(), '.config', 'ex-g-se', 'settings.enc');
+
+  if (!fs.existsSync(configPath)) {
+    console.log(chalk.yellow('\n⚠️  No configuration found\n'));
+    console.log(chalk.gray('Run: exg config\n'));
+    return;
+  }
+
+  try {
+    const encrypted = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    const stats = fs.statSync(configPath);
+
+    console.log(chalk.bold('\n📋 Current Configuration\n'));
+    console.log(`  ${chalk.gray('Encrypted:')} ${chalk.green('Yes')}`);
+    console.log(`  ${chalk.gray('File:')} ${configPath}`);
+    console.log(`  ${chalk.gray('Size:')} ${formatBytes(stats.size)}`);
+    console.log(`  ${chalk.gray('Created:')} ${stats.birthtime.toLocaleString()}`);
+    console.log(`  ${chalk.gray('Modified:')} ${stats.mtime.toLocaleString()}`);
+    console.log('');
+
+    // Try to decrypt and show provider
+    const masterPassword = await promptPassword(chalk.cyan('🔐 Enter master password to view details: '));
+    const decrypted = decrypt(encrypted, masterPassword);
+    const config = JSON.parse(decrypted);
+
+    console.log(`  ${chalk.gray('Provider:')} ${chalk.cyan(config.provider)}`);
+    console.log(`  ${chalk.gray('Model:')} ${config.model}`);
+    console.log(`  ${chalk.gray('API URL:')} ${config.api_url}`);
+    console.log(`  ${chalk.gray('API Key:')} ${chalk.gray('••••••••••••')}${config.api_key.slice(-4)}`);
+    console.log('');
+  } catch (error) {
+    if (error.message.includes('Unsupported state')) {
+      console.error(chalk.red('\n❌ Incorrect password\n'));
     } else {
-      eventCount++;
+      console.error(chalk.red('\n❌ Error:'), error.message, '\n');
     }
-  });
-
-  // Don't forget last intent
-  if (currentIntent && eventCount > 3) {
-    intents.push({
-      intent: currentIntent,
-      confidence: Math.min(eventCount / 10, 1),
-      start_time: intentStart,
-      end_time: events[events.length - 1].ts,
-    });
   }
-
-  return intents;
 }
 
-function detectIntentFromEvent(event) {
-  if (event.type === 'fs_change') {
-    const path = event.data.path || '';
-    if (path.includes('test') || path.includes('spec')) return 'Testing';
-    if (path.includes('doc') || path.endsWith('.md')) return 'Documentation';
-    if (path.includes('config') || path.endsWith('.json')) return 'Configuration';
-    return 'Feature Development';
+async function validateConfig() {
+  console.log(chalk.bold('\n🧪 Testing API Connection...\n'));
+
+  const config = await loadConfig();
+
+  if (!config) {
+    console.error(chalk.red('❌ No configuration found\n'));
+    console.error(chalk.gray('Run: exg config\n'));
+    process.exit(1);
   }
 
-  if (event.type === 'clipboard') {
-    const content = (event.data.content || '').toLowerCase();
-    if (content.includes('error') || content.includes('bug')) return 'Bug Fixing';
-    if (content.includes('test')) return 'Testing';
-    return 'Feature Development';
-  }
-
-  return 'Feature Development';
-}
-
-function identifyKeyMoments(events) {
-  const moments = [];
-  let activityCluster = [];
-  let lastEventTime = null;
-
-  events.forEach(event => {
-    if (event.type === 'fs_change') {
-      activityCluster.push(event);
-
-      if (lastEventTime) {
-        const elapsed = Math.abs(new Date(event.ts) - new Date(lastEventTime)) / 1000 / 60;
-        if (elapsed > 2 && activityCluster.length > 0) {
-          moments.push({
-            timestamp: activityCluster[0].ts,
-            title: 'Activity Burst',
-            description: `${activityCluster.length} files modified`,
-            intent: 'Feature Development',
-          });
-          activityCluster = [];
-        }
-      }
-      lastEventTime = event.ts;
-    }
-  });
-
-  return moments;
-}
-
-function generateScript(analysis) {
-  let markdown = `# Development Session\n\n`;
-  markdown += `**Start**: ${analysis.start_time}\n`;
-  markdown += `**End**: ${analysis.end_time}\n`;
-  markdown += `**Intents**: ${analysis.intents.map(i => i.intent).join(', ')}\n\n`;
-  markdown += `---\n\n`;
-
-  let actNumber = 1;
-  let sceneNumber = 1;
-
-  analysis.intents.forEach((intent, i) => {
-    markdown += `## ACT ${actNumber} - ${formatActTitle(intent.intent)}\n\n`;
-    markdown += `**Time**: ${intent.start_time} - ${intent.end_time}\n`;
-    markdown += `**Intent**: ${intent.intent}\n`;
-    markdown += `**Confidence**: ${(intent.confidence * 100).toFixed(0)}%\n\n`;
-
-    const intentMoments = analysis.key_moments.filter(moment => {
-      const momentTime = new Date(moment.timestamp);
-      const startTime = new Date(intent.start_time);
-      const endTime = new Date(intent.end_time);
-      return momentTime >= startTime && momentTime <= endTime;
+  try {
+    const url = config.api_url.replace(/\/v\d+$/, '/v1');
+    const response = await fetch(`${url}/models`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${config.api_key}`,
+      },
     });
 
-    if (intentMoments.length > 0) {
-      intentMoments.forEach(moment => {
-        markdown += `### Scene ${sceneNumber}: ${moment.title}\n\n`;
-        markdown += `**Timestamp**: ${moment.timestamp}\n`;
-        markdown += `**Description**: ${moment.description}\n\n`;
-        markdown += `**Dialogue**:\n\n`;
-        markdown += `> **NARRATOR**: ${moment.description}\n`;
-        markdown += `> **DEVELOPER**: "${generateThought(moment.intent)}"\n\n`;
-        sceneNumber++;
-      });
+    if (response.ok) {
+      console.log(chalk.green('✅ API connection successful!\n'));
+      console.log(`  Provider: ${chalk.cyan(config.provider)}`);
+      console.log(`  Model: ${chalk.cyan(config.model)}\n`);
+    } else if (response.status === 401) {
+      console.error(chalk.yellow('⚠️  API key is invalid or expired\n'));
+      console.error(chalk.gray('Run: exg config\n'));
+      process.exit(1);
+    } else {
+      console.error(chalk.yellow(`⚠️  API returned status: ${response.status}\n`));
     }
-
-    actNumber++;
-  });
-
-  const exGseDir = '.ex-g-se';
-  if (!fs.existsSync(exGseDir)) {
-    fs.mkdirSync(exGseDir, { recursive: true });
+  } catch (error) {
+    console.error(chalk.red('❌ Connection failed:'), error.message);
+    console.error(chalk.gray('\nCheck your internet connection and API URL\n'));
+    process.exit(1);
   }
-
-  fs.writeFileSync('.ex-g-se/session_script.md', markdown);
 }
 
-function generateVideoAssets(analysis) {
-  const timeline = analysis.key_moments.map((moment, i) => {
-    const nextMoment = analysis.key_moments[i + 1];
-    let duration = 30;
+// ============================================================================
+// HELPERS
+// ============================================================================
 
-    if (nextMoment) {
-      const currentTime = new Date(moment.timestamp);
-      const nextTime = new Date(nextMoment.timestamp);
-      duration = Math.max(10, Math.floor((nextTime - currentTime) / 1000));
-    }
+function formatDurationSeconds(seconds) {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
 
-    return {
-      timestamp: moment.timestamp,
-      duration_seconds: duration,
-      title: moment.title,
-      description: moment.description,
-      screenshot: null,
-      actions: [
-        { type: 'highlight', target: 'current file', duration: 3 },
-        { type: 'typewriter', text: moment.title, duration: 2 },
-        { type: 'fade_out', duration: 1 },
-      ],
-      voiceover: `At this moment: ${moment.title}. ${moment.description}`,
-    };
-  });
-
-  const videoAssetsDir = '.ex-g-se/video_assets';
-  if (!fs.existsSync(videoAssetsDir)) {
-    fs.mkdirSync(videoAssetsDir, { recursive: true });
+  if (hours > 0) {
+    return `${hours}h ${minutes}m ${secs}s`;
+  } else if (minutes > 0) {
+    return `${minutes}m ${secs}s`;
+  } else {
+    return `${secs}s`;
   }
-
-  fs.writeFileSync(
-    '.ex-g-se/video_assets/scenes.json',
-    JSON.stringify(timeline, null, 2)
-  );
 }
 
-function formatActTitle(intent) {
-  const titles = {
-    'Bug Fixing': 'The Investigation',
-    'Feature Development': 'The Creation',
-    'Refactoring': 'The Improvement',
-    'Testing': 'The Verification',
-    'Deployment': 'The Release',
-    'Documentation': 'The Documentation',
-    'Configuration': 'The Setup',
-    'Learning': 'The Exploration',
-  };
-  return titles[intent] || `The ${intent}`;
-}
-
-function generateThought(intent) {
-  const thoughts = {
-    'Bug Fixing': "Hmm, this isn't working. Let me debug this issue...",
-    'Feature Development': "Now I'll implement this new feature...",
-    'Refactoring': "This code could be cleaner. Let me refactor it...",
-    'Testing': "Let me verify this works with a test...",
-    'Deployment': "Time to deploy this to production...",
-    'Documentation': "I should document this for future reference...",
-    'Configuration': "Let me configure this setting...",
-    'Learning': "Interesting! Let me explore how this works...",
-  };
-  return thoughts[intent] || "Working on the code...";
-}
-
-function generateSessionId() {
-  return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-}
-
-function formatDuration(start, end) {
-  const startTime = new Date(start);
-  const endTime = new Date(end);
-  const diff = (endTime - startTime) / 1000 / 60;
-  if (diff < 60) return `${Math.round(diff)} minutes`;
-  const hours = Math.floor(diff / 60);
-  const mins = Math.round(diff % 60);
-  return `${hours}h ${mins}m`;
+function formatBytes(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 }
 
 // ============================================================================
@@ -400,149 +552,223 @@ function formatDuration(start, end) {
 // ============================================================================
 
 function showHelp() {
-  console.log('\nEX-G-SE v0.3.7 - Ghost Mode Observability\n');
-  console.log('Usage:\n');
-  console.log('  exg config    Configure AI provider (OpenAI, Anthropic, z.ai)');
-  console.log('  exg record    Start recording session (Ctrl+Shift+X to stop)');
-  console.log('  exg update     Update to latest version');
-  console.log('  exg           Show this help message\n');
-  console.log('Install:\n');
-  console.log('  npm install -g @oalacea/ex-g-se\n');
-  console.log('Or use npx without installing:\n');
-  console.log('  npx @oalacea/ex-g-se config');
-  console.log('  npx @oalacea/ex-g-se record\n');
+  console.log(chalk.bold('\nEX-G-SE v4.0.0 - Ghost Mode Observability\n'));
+  console.log(chalk.cyan('Commands:\n'));
+  console.log('  exg config              Configure AI provider');
+  console.log('  exg config list         Show current configuration');
+  console.log('  exg config test         Test API connection');
+  console.log('  exg record              Start recording session');
+  console.log('  exg record --label      Record with custom label');
+  console.log('  exg record --duration   Auto-stop after N minutes');
+  console.log('  exg record --max-events Stop after N events');
+  console.log('  exg record --tags       Add tags to session');
+  console.log('  exg stats [session]     Show session statistics');
+  console.log('  exg list                List all sessions');
+  console.log('  exg search <query>      Search sessions');
+  console.log('  exg export <format>     Export session (json, markdown, csv)');
+  console.log('  exg update              Update to latest version\n');
+  console.log(chalk.gray('Examples:\n'));
+  console.log('  exg record --label "Fixing bug #123"');
+  console.log('  exg record --duration 30 --tags bugfix,payment');
+  console.log('  exg export markdown > session.md\n');
 }
 
 async function main() {
-  // Handle commands
   const args = process.argv.slice(2);
+
+  // No arguments = show help
+  if (args.length === 0) {
+    showHelp();
+    return;
+  }
+
   const command = args[0];
 
+  // ============================================================================
+  // CONFIG COMMANDS
+  // ============================================================================
+
   if (command === 'config') {
-    // Execute config.js
-    const { execSync } = require('child_process');
+    const subCommand = args[1];
+
+    if (subCommand === 'list') {
+      await listConfig();
+      return;
+    }
+
+    if (subCommand === 'test') {
+      await validateConfig();
+      return;
+    }
+
+    // Default: run config wizard
     const configPath = path.join(__dirname, 'config.js');
     execSync(`node "${configPath}"`, { stdio: 'inherit' });
     return;
   }
 
+  // ============================================================================
+  // UPDATE COMMAND
+  // ============================================================================
+
   if (command === 'update') {
-    // Update package
-    const { execSync } = require('child_process');
-    console.log('\n🔄 Checking for updates...\n');
+    console.log(chalk.cyan('\n🔄 Checking for updates...\n'));
     try {
       execSync('npm update -g @oalacea/ex-g-se', { stdio: 'inherit' });
-      console.log('\n✅ Updated successfully!\n');
+      console.log(chalk.green('\n✅ Updated successfully!\n'));
     } catch (error) {
-      console.error('\n❌ Update failed:', error.message);
+      console.error(chalk.red('\n❌ Update failed:'), error.message);
       process.exit(1);
     }
     return;
   }
 
-  if (command === 'record' || !command) {
-    // Recording mode
-    console.log('\nEX-G-SE v0.3.5 - Ghost Mode Observability\n');
-  } else {
-    console.error(`\n❌ Unknown command: ${command}\n`);
-    showHelp();
-    process.exit(1);
+  // ============================================================================
+  // LIST COMMAND
+  // ============================================================================
+
+  if (command === 'list') {
+    listSessions();
+    return;
   }
 
-  // Load config
-  const config = await loadConfig();
+  // ============================================================================
+  // SEARCH COMMAND
+  // ============================================================================
 
-  if (!config) {
-    console.error('❌ Aucune configuration trouvée !\n');
-    console.error('Configurez EX-G-SE:\n');
-    console.error('  npx @oalacea/ex-g-se config\n');
-    console.error('Ou utilisez les variables d\'environnement:\n');
-    console.error('  export EX_G_SE_PROVIDER=openai');
-    console.error('  export EX_G_SE_API_KEY=sk-...\n');
-    process.exit(1);
+  if (command === 'search') {
+    const query = args[1];
+    if (!query) {
+      console.error(chalk.red('\n❌ Usage: exg search <query>\n'));
+      process.exit(1);
+    }
+    searchSessions(query);
+    return;
   }
 
-  console.log(`✅ Configuration: ${config.provider} (${config.model})\n`);
+  // ============================================================================
+  // STATS COMMAND
+  // ============================================================================
 
-  const platform = os.platform();
-  const arch = os.arch();
-
-  let binaryName = '';
-  if (platform === 'linux') {
-    binaryName = 'ex-g-se-linux';
-  } else if (platform === 'win32') {
-    binaryName = 'ex-g-se-win.exe';
-  } else if (platform === 'darwin') {
-    binaryName = arch === 'arm64' ? 'ex-g-se-macos-silicon' : 'ex-g-se-macos-intel';
+  if (command === 'stats') {
+    const sessionId = args[1];
+    showSessionStats(sessionId);
+    return;
   }
 
-  const binaryPath = path.join(__dirname, binaryName);
+  // ============================================================================
+  // EXPORT COMMAND
+  // ============================================================================
 
-  console.log(`▶ Démarrage de l'enregistrement (${platform}-${arch})...`);
-  console.log(`⚠️  Appuyez sur Ctrl+Shift+X pour arrêter\n`);
-
-  try {
-    // Run the Rust binary
-    execSync(`"${binaryPath}"`, { stdio: 'inherit' });
-  } catch (e) {
-    // Binary exited (user pressed Ctrl+Shift+X or Ctrl+C)
+  if (command === 'export') {
+    const format = args[1] || 'json';
+    const sessionId = args[2];
+    exportSession(sessionId, format);
+    return;
   }
 
-  console.log(`\n⏸ Enregistrement terminé\n`);
+  // ============================================================================
+  // RECORD COMMAND
+  // ============================================================================
 
-  // Check if raw_logs.json was created
-  if (!fs.existsSync('raw_logs.json')) {
-    console.error('❌ Aucune donnée de session trouvée');
-    process.exit(1);
+  if (command === 'record' || command === 'rec') {
+    // Parse options
+    let label = null;
+    let tags = [];
+    let duration = null;
+    let maxEvents = null;
+
+    for (let i = 1; i < args.length; i++) {
+      if (args[i] === '--label' && args[i + 1]) {
+        label = args[++i];
+      } else if (args[i] === '--tags' && args[i + 1]) {
+        tags = args[++i].split(',').map(t => t.trim());
+      } else if (args[i] === '--duration' && args[i + 1]) {
+        duration = parseInt(args[++i]);
+      } else if (args[i] === '--max-events' && args[i + 1]) {
+        maxEvents = parseInt(args[++i]);
+      }
+    }
+
+    // Load config
+    const config = await loadConfig();
+
+    if (!config) {
+      console.error(chalk.red('\n❌ No configuration found!\n'));
+      console.error(chalk.gray('Configure EX-G-SE:\n'));
+      console.error(chalk.gray('  exg config\n'));
+      console.error(chalk.gray('Or use environment variables:\n'));
+      console.error(chalk.gray('  export EX_G_SE_PROVIDER=openai'));
+      console.error(chalk.gray('  export EX_G_SE_API_KEY=sk-...\n'));
+      process.exit(1);
+    }
+
+    console.log(chalk.green(`✅ Configuration: ${config.provider} (${config.model})\n`));
+
+    const platform = os.platform();
+    const arch = os.arch();
+
+    let binaryName = '';
+    if (platform === 'linux') {
+      binaryName = 'ex-g-se-linux';
+    } else if (platform === 'win32') {
+      binaryName = 'ex-g-se-win.exe';
+    } else if (platform === 'darwin') {
+      binaryName = arch === 'arm64' ? 'ex-g-se-macos-silicon' : 'ex-g-se-macos-intel';
+    }
+
+    const binaryPath = path.join(__dirname, binaryName);
+
+    // Show session info
+    console.log(chalk.bold('▶ Starting Recording Session\n'));
+    if (label) {
+      console.log(`  ${chalk.gray('Label:')} ${chalk.cyan(label)}`);
+    }
+    if (tags.length > 0) {
+      console.log(`  ${chalk.gray('Tags:')} ${chalk.cyan(tags.join(', '))}`);
+    }
+    if (duration) {
+      console.log(`  ${chalk.gray('Auto-stop:')} ${chalk.yellow(duration + ' minutes')}`);
+    }
+    if (maxEvents) {
+      console.log(`  ${chalk.gray('Max events:')} ${chalk.yellow(maxEvents)}`);
+    }
+    console.log(`  ${chalk.gray('Platform:')} ${platform}-${arch}`);
+    console.log(chalk.gray('\n⚠️  Press Ctrl+Shift+X or Ctrl+C to stop\n'));
+    console.log(chalk.gray('⏸️  Session will be saved and you can press ENTER to exit\n'));
+
+    try {
+      // Run the Rust binary (it will save directly to ~/.ex-g-se/sessions/)
+      execSync(`"${binaryPath}"`, { stdio: 'inherit' });
+    } catch (e) {
+      // Binary exited (normal)
+    }
+
+    // The Rust binary now handles everything:
+    // - Saves to ~/.ex-g-se/sessions/ with timestamp
+    // - Shows summary
+    // - Waits for ENTER to exit
+
+    console.log(chalk.green('\n✅ Recording complete!\n'));
+    console.log(chalk.gray('Session saved to: ~/.ex-g-se/sessions/\n'));
+    console.log(chalk.gray('Use:'));
+    console.log(chalk.gray('  exg list     - List all sessions'));
+    console.log(chalk.gray('  exg stats    - Show session statistics'));
+    console.log(chalk.gray('  exg search   - Search sessions\n'));
+
+    return;
   }
 
-  console.log(`🔍 Analyse de la session...\n`);
+  // ============================================================================
+  // UNKNOWN COMMAND
+  // ============================================================================
 
-  const logs = JSON.parse(fs.readFileSync('raw_logs.json', 'utf-8'));
-
-  console.log(`  Événements: ${logs.events.length}`);
-  console.log(`  Durée: ${formatDuration(logs.start, logs.end)}`);
-
-  // Analyze
-  const intents = detectIntents(logs.events);
-  const keyMoments = identifyKeyMoments(logs.events);
-
-  console.log(`  Intents détectés: ${intents.length}`);
-  console.log(`  Moments clés: ${keyMoments.length}`);
-
-  // Create .ex-g-se directory
-  const exGseDir = '.ex-g-se';
-  if (!fs.existsSync(exGseDir)) {
-    fs.mkdirSync(exGseDir, { recursive: true });
-  }
-
-  // Save analysis
-  const analysis = {
-    session_id: generateSessionId(),
-    start_time: logs.start,
-    end_time: logs.end,
-    intents: intents,
-    key_moments: keyMoments,
-    summary: `Session with ${logs.events.length} events`,
-  };
-
-  fs.writeFileSync(
-    '.ex-g-se/session_analysis.json',
-    JSON.stringify(analysis, null, 2)
-  );
-
-  // Generate outputs
-  generateScript(analysis);
-  generateVideoAssets(analysis);
-
-  console.log(`\n✅ Session terminée !\n`);
-  console.log(`📁 Fichiers générés:`);
-  console.log(`  • .ex-g-se/session_analysis.json`);
-  console.log(`  • .ex-g-se/session_script.md`);
-  console.log(`  • .ex-g-se/video_assets/scenes.json\n`);
+  console.error(chalk.red(`\n❌ Unknown command: ${command}\n`));
+  showHelp();
+  process.exit(1);
 }
 
 main().catch(error => {
-  console.error('\n❌ Erreur:', error.message);
+  console.error(chalk.red('\n❌ Error:'), error.message);
   process.exit(1);
 });

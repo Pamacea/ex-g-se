@@ -21,9 +21,9 @@ use chrono::{DateTime, Utc};
 use rdev::{Event, EventType, Key};
 use serde::Serialize;
 use serde_json::json;
-use ex_g_se::{capture_screenshot, fs_watcher};
-use std::fs::File;
-use std::io::Write;
+use ex_g_se::{capture_screenshot, fs_watcher, CliConfig};
+use std::fs::{self, File};
+use std::io::{self, Write};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, mpsc as std_mpsc};
@@ -69,10 +69,29 @@ struct ExGSeEngine {
     running: Arc<AtomicBool>,
     trigger_keys: Vec<Key>,
     screenshot_interval_secs: u64,
+    cli_config: CliConfig,
+    // Better file filtering
+    ignore_patterns: Vec<String>,
 }
 
 impl ExGSeEngine {
     fn new() -> Self {
+        let cli_config = CliConfig::from_args();
+
+        // Show CLI config if set
+        if let Some(ref label) = cli_config.session_label {
+            eprintln!("[CLI] Session label: {}", label);
+        }
+        if !cli_config.tags.is_empty() {
+            eprintln!("[CLI] Tags: {}", cli_config.tags.join(", "));
+        }
+        if let Some(duration) = cli_config.max_duration_secs {
+            eprintln!("[CLI] Auto-stop after: {}s", duration);
+        }
+        if let Some(max_events) = cli_config.max_events {
+            eprintln!("[CLI] Max events: {}", max_events);
+        }
+
         Self {
             events: Vec::new(),
             start_time: Utc::now(),
@@ -80,7 +99,36 @@ impl ExGSeEngine {
             // Trigger: Ctrl+Shift+X
             trigger_keys: vec![Key::ControlLeft, Key::ShiftLeft, Key::KeyX],
             screenshot_interval_secs: 30,
+            cli_config,
+            // Better file filtering
+            ignore_patterns: vec![
+                "node_modules".to_string(),
+                ".git".to_string(),
+                "target".to_string(),
+                "dist".to_string(),
+                ".ex-g-se".to_string(),
+                ".next".to_string(),
+                "coverage".to_string(),
+                "*.log".to_string(),
+                "*.tmp".to_string(),
+            ],
         }
+    }
+
+    /// Check if path should be ignored
+    fn should_ignore_path(&self, path: &str) -> bool {
+        for pattern in &self.ignore_patterns {
+            if pattern.starts_with('*') {
+                // Extension pattern
+                let ext = &pattern[1..];
+                if path.ends_with(ext) {
+                    return true;
+                }
+            } else if path.contains(pattern) {
+                return true;
+            }
+        }
+        false
     }
 
     /// Record an event
@@ -94,8 +142,23 @@ impl ExGSeEngine {
         self.events.push(entry);
     }
 
-    /// Write logs to file
+    /// Write logs to file in sessions directory
     fn save_logs(&self) -> Result<()> {
+        // Create sessions directory
+        let sessions_dir = dirs::home_dir()
+            .map(|home| home.join(".ex-g-se").join("sessions"))
+            .unwrap_or_else(|| PathBuf::from(".ex-g-se/sessions"));
+
+        fs::create_dir_all(&sessions_dir)?;
+
+        // Generate timestamped filename
+        let timestamp = self.start_time.format("%Y-%m-%d_%H-%M-%S");
+        let label_part = self.cli_config.session_label.as_ref()
+            .map(|l| l.replace(' ', "_"))
+            .unwrap_or_else(|| "session".to_string());
+        let filename = format!("{}_{}.json", timestamp, label_part);
+        let filepath = sessions_dir.join(&filename);
+
         let logs = SessionLogs {
             start_time: self.start_time,
             end_time: Some(Utc::now()),
@@ -103,20 +166,23 @@ impl ExGSeEngine {
         };
 
         let json = serde_json::to_string_pretty(&logs)?;
-        let mut file = File::create("raw_logs.json")?;
+        let mut file = File::create(&filepath)?;
         file.write_all(json.as_bytes())?;
 
-        eprintln!(".");
-        eprintln!(".");
-        eprintln!("[EX-G-SE] Session saved to raw_logs.json");
-        eprintln!("[EX-G-SE] {} events captured", self.events.len());
+        // Show clear success message
+        eprintln!("\n{}", "=".repeat(60));
+        eprintln!("✅ SESSION SAVED SUCCESSFULLY!");
+        eprintln!("{}", "=".repeat(60));
+        eprintln!("\n📁 Session file: {}", filepath.display());
+        eprintln!("📊 Events captured: {}", self.events.len());
 
         Ok(())
     }
 
-    /// File system watcher
+    /// File system watcher with better filtering
     async fn watch_fs(&self, tx: mpsc::UnboundedSender<LogEntry>) -> Result<()> {
         let running = self.running.clone();
+        let ignore_patterns = self.ignore_patterns.clone();
         let (fs_tx, fs_rx) = std_mpsc::channel();
 
         // Spawn fs watcher in blocking thread
@@ -131,12 +197,25 @@ impl ExGSeEngine {
             while running.load(Ordering::Relaxed) {
                 match fs_rx.recv_timeout(Duration::from_millis(100)) {
                     Ok(event) => {
-                        // Filter noise (node_modules, .git, target)
+                        // Better filtering
                         let path = event.data["path"].as_str().unwrap_or("unknown");
-                        if path.contains("node_modules")
-                            || path.contains(".git")
-                            || path.contains("target")
-                        {
+
+                        let mut should_ignore = false;
+                        for pattern in &ignore_patterns {
+                            if pattern.starts_with('*') {
+                                // Extension pattern
+                                let ext = &pattern[1..];
+                                if path.ends_with(ext) {
+                                    should_ignore = true;
+                                    break;
+                                }
+                            } else if path.contains(pattern) {
+                                should_ignore = true;
+                                break;
+                            }
+                        }
+
+                        if should_ignore {
                             continue;
                         }
 
@@ -307,9 +386,9 @@ impl ExGSeEngine {
         Ok(())
     }
 
-    /// Main run loop
+    /// Main run loop with CLI limits
     async fn run(&mut self) -> Result<()> {
-        eprintln!("EX-G-SE Core Engine v0.1.0 - Ghost Mode");
+        eprintln!("EX-G-SE Core Engine v4.0.0 - Ghost Mode");
         eprintln!("========================================");
         eprintln!("[INFO] Starting shadow logging session...");
 
@@ -333,15 +412,63 @@ impl ExGSeEngine {
             }
         });
 
-        // Collect events
+        // Collect events with CLI limits
+        let start_time = Utc::now();
+        let mut last_stats_time = start_time;
+
         while self.running.load(Ordering::Relaxed) {
             if let Some(entry) = rx.recv().await {
                 self.events.push(entry);
+
+                // Check CLI limits
+                let elapsed_secs = (Utc::now() - start_time).num_seconds();
+                if self.cli_config.should_stop(elapsed_secs, self.events.len()) {
+                    eprintln!("\n[CLI] Limit reached, stopping session...");
+                    self.running.store(false, Ordering::Relaxed);
+                    break;
+                }
+
+                // Show progress every 30 seconds
+                if elapsed_secs > 0 && elapsed_secs % 30 == 0 && elapsed_secs != (last_stats_time - start_time).num_seconds() {
+                    last_stats_time = Utc::now();
+                    let clip_count = self.events.iter().filter(|e| e.event_type == "clipboard").count();
+                    let fs_count = self.events.iter().filter(|e| e.event_type == "fs_change").count();
+                    let screenshot_count = self.events.iter().filter(|e| e.event_type == "screenshot").count();
+                    let duration = format_duration(elapsed_secs.try_into().unwrap());
+
+                    eprint!("\r[EX-G-SE] Recording... ({:<15} | Events: {:>4} | FS: {:>3} | Clips: {:>3} | Shots: {:>3})",
+                        duration,
+                        self.events.len(),
+                        fs_count,
+                        clip_count,
+                        screenshot_count
+                    );
+                }
             }
         }
 
         // Save logs on shutdown
         self.save_logs()?;
+
+        // Show detailed session summary
+        let end_time = Utc::now();
+        let duration_secs = (end_time - start_time).num_seconds();
+        let clip_count = self.events.iter().filter(|e| e.event_type == "clipboard").count();
+        let fs_count = self.events.iter().filter(|e| e.event_type == "fs_change").count();
+        let screenshot_count = self.events.iter().filter(|e| e.event_type == "screenshot").count();
+
+        eprintln!("\n📊 Session Summary:");
+        eprintln!("   ⏱️  Duration: {}", format_duration(duration_secs.try_into().unwrap()));
+        eprintln!("   📁 Total Events: {}", self.events.len());
+        eprintln!("   📋 Clipboard Changes: {}", clip_count);
+        eprintln!("   📂 File Changes: {}", fs_count);
+        eprintln!("   🖼️  Screenshots: {}", screenshot_count);
+        eprintln!("\n{}", "=".repeat(60));
+        eprintln!("\n⏸️  Press ENTER to exit...");
+
+        // Wait for user to press Enter
+        let mut input = String::new();
+        io::stdin().read_line(&mut input)?;
 
         Ok(())
     }
@@ -359,6 +486,20 @@ async fn main() -> Result<()> {
     eprintln!("\n[INFO] Session complete. Goodbye!");
 
     Ok(())
+}
+
+fn format_duration(total_seconds: u64) -> String {
+    let hours = total_seconds / 3600;
+    let minutes = (total_seconds % 3600) / 60;
+    let seconds = total_seconds % 60;
+
+    if hours > 0 {
+        format!("{}h {}m", hours, minutes)
+    } else if minutes > 0 {
+        format!("{}m {}s", minutes, seconds)
+    } else {
+        format!("{}s", seconds)
+    }
 }
 
 // ============================================================================

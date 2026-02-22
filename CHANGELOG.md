@@ -5,6 +5,99 @@ All notable changes to EX-G-SE will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.0] - 2025-02-22
+
+### Added - Core Features
+
+- 📊 **Live progress indicator** during recording sessions
+  - Shows statistics every 30 seconds
+  - Displays: duration, total events, file changes, clipboard changes, screenshots
+  - Example: `[EX-G-SE] Recording... (1m 30s | Events:  45 | FS: 12 | Clips:  3 | Shots:  2)`
+
+- ✅ **Session summary** when recording stops
+  - Comprehensive statistics display
+  - Shows: total duration, event counts, breakdown by type
+  - Visual success indicator with emoji
+
+- 🏷️ **Session labels and tags**
+  - `exg record --label "Custom label"`
+  - `exg record --tags bugfix,payment`
+  - Organize sessions with metadata
+
+- ⏱️ **Auto-stop functionality**
+  - `exg record --duration 30` - Stop after N minutes
+  - `exg record --max-events 1000` - Stop after N events
+  - Useful for time-boxed sessions
+
+- 📁 **Multiple sessions support**
+  - Sessions now stored in `~/.ex-g-se/sessions/`
+  - Timestamped filenames: `2025-02-22_14-30-15_label.json`
+  - No more overwriting raw_logs.json
+
+- 🔍 **Session search**
+  - `exg search <query>` - Search through all sessions
+  - Searches in labels, tags, and event content
+  - Shows matching sessions with context
+
+- 📊 **Session statistics**
+  - `exg stats [session_id]` - Show detailed statistics
+  - Displays: duration, event counts, breakdown by type, disk usage
+
+- 📤 **Export formats**
+  - `exg export json` - Export as JSON
+  - `exg export markdown` - Export as Markdown report
+  - `exg export csv` - Export as CSV for data analysis
+
+### Added - Configuration
+
+- ⚙️ **Config list command**
+  - `exg config list` - Show current configuration
+  - Displays: provider, model, API URL, encrypted status
+
+- 🧪 **API connection test**
+  - `exg config test` - Test API connection
+  - Validates API key and endpoint
+  - Shows clear success/error messages
+
+### Added - UI/UX
+
+- 🎨 **Rich terminal output with colors**
+  - Uses chalk for colored output
+  - Better visual hierarchy and readability
+  - Consistent emoji usage
+
+- 📋 **Better help messages**
+  - `exg` - Show comprehensive help
+  - Examples for all commands
+  - Clear usage instructions
+
+### Changed
+
+- 🔧 **Better file watching**
+  - Smart filtering: node_modules, .git, target, dist, .next, coverage
+  - Ignores *.log and *.tmp files
+  - Reduced noise in event logs
+
+- 📦 **Session storage**
+  - Moved from `raw_logs.json` to `~/.ex-g-se/sessions/`
+  - Automatic timestamping
+  - Metadata included (label, tags)
+
+### Technical
+
+- Added `CliConfig` module for command-line argument parsing
+- Added `format_duration()` helper for human-readable time
+- Added `formatBytes()` for file size formatting
+- Progress tracking with 30-second intervals
+- Type-safe conversions for duration calculations (i64 to u64)
+- Dependencies: chalk@5.3.0, commander@12.0.0
+
+### Breaking Changes
+
+- `raw_logs.json` is no longer created in current directory
+- Sessions are now stored in `~/.ex-g-se/sessions/` by default
+- Use `exg export` to get session data in current directory
+
 ## [0.3.8] - 2025-02-22
 
 ### Fixed
