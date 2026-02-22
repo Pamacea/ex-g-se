@@ -5,6 +5,25 @@ All notable changes to EX-G-SE will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3] - 2025-02-22
+
+### Fixed
+- 🪟 **Added Windows .cmd files** for proper npx support on Windows
+  - Added `bin/ex-g-se-config.cmd` for config command
+  - Existing `bin/ex-g-se.cmd` already present
+  - `npx @oalacea/ex-g-se config` now works on Windows
+- 🔧 **Enhanced bin/index.js** to handle `config` subcommand directly
+  - Falls back to config.js when called with `config` argument
+  - Better cross-platform compatibility
+
+### Changed
+- Package now includes proper Windows batch files (.cmd)
+- All version references updated to 0.3.3
+
+### Technical
+- Added postinstall script for better user feedback
+- Package structure: 11 files including .cmd files for Windows
+
 ## [0.3.2] - 2025-02-22
 
 ### Fixed
