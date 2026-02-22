@@ -27,6 +27,10 @@ switch ($Command) {
         & node "$ScriptDir\index.js" @args
         exit $LASTEXITCODE
     }
+    "update" {
+        npm update -g @oalacea/ex-g-se
+        exit $LASTEXITCODE
+    }
     default {
         $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
         & node "$ScriptDir\index.js" @args

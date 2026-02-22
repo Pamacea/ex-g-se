@@ -1,10 +1,10 @@
-# EX-G-SE v0.3.6
+# EX-G-SE v0.3.7
 
 > **AI-powered shadow logging observability for development sessions**
 
 ```
 .--------------------------------------------------------------.
-|  EX-G-SE  v0.3.6  |  GHOST OBSERVABILITY + AI ANALYSIS   |
+|  EX-G-SE  v0.3.7  |  GHOST OBSERVABILITY + AI ANALYSIS   |
 '--------------------------------------------------------------'
 ```
 
@@ -79,6 +79,7 @@ exg record
 exg              Show help
 exg config       Configure AI provider
 exg record       Start recording session
+exg update       Update to latest version
 ```
 
 ## How It Works

@@ -400,10 +400,11 @@ function formatDuration(start, end) {
 // ============================================================================
 
 function showHelp() {
-  console.log('\nEX-G-SE v0.3.5 - Ghost Mode Observability\n');
+  console.log('\nEX-G-SE v0.3.7 - Ghost Mode Observability\n');
   console.log('Usage:\n');
   console.log('  exg config    Configure AI provider (OpenAI, Anthropic, z.ai)');
   console.log('  exg record    Start recording session (Ctrl+Shift+X to stop)');
+  console.log('  exg update     Update to latest version');
   console.log('  exg           Show this help message\n');
   console.log('Install:\n');
   console.log('  npm install -g @oalacea/ex-g-se\n');
@@ -422,6 +423,20 @@ async function main() {
     const { execSync } = require('child_process');
     const configPath = path.join(__dirname, 'config.js');
     execSync(`node "${configPath}"`, { stdio: 'inherit' });
+    return;
+  }
+
+  if (command === 'update') {
+    // Update package
+    const { execSync } = require('child_process');
+    console.log('\n🔄 Checking for updates...\n');
+    try {
+      execSync('npm update -g @oalacea/ex-g-se', { stdio: 'inherit' });
+      console.log('\n✅ Updated successfully!\n');
+    } catch (error) {
+      console.error('\n❌ Update failed:', error.message);
+      process.exit(1);
+    }
     return;
   }
 

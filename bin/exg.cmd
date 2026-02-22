@@ -16,6 +16,11 @@ if "%COMMAND%"=="record" (
     exit /b !ERRORLEVEL!
 )
 
-REM Default: show help (or record if no args)
+if "%COMMAND%"=="update" (
+    npm update -g @oalacea/ex-g-se
+    exit /b !ERRORLEVEL!
+)
+
+REM Default: show help
 "%NODE_EXE%" "!SCRIPT_DIR!index.js"
 exit /b %ERRORLEVEL%

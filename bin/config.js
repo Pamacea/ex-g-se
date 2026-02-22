@@ -237,29 +237,31 @@ async function config() {
 
   // 3. API URL
   const defaultUrl = getDefaultUrl(provider);
-  const apiUrlQuestion = defaultUrl ? `🌐 API URL (default: ${defaultUrl}): ` : '🌐 API URL: ';
-  const apiUrl = await prompt(rl, apiUrlQuestion);
-  const finalApiUrl = apiUrl || defaultUrl;
+  console.log('');
+  const apiUrl = await prompt(rl, `🌐 API URL (default: ${defaultUrl}): `);
+  const finalApiUrl = apiUrl.trim() || defaultUrl;
+  console.log(`✅ URL: ${finalApiUrl}`);
 
   // 4. Model
   const defaultModel = getDefaultModel(provider);
-  const modelQuestion = defaultModel ? `🤖 Model (default: ${defaultModel}): ` : '🤖 Model: ';
-  const model = await prompt(rl, modelQuestion);
-  const finalModel = model || defaultModel;
+  const model = await prompt(rl, `🤖 Model (default: ${defaultModel}): `);
+  const finalModel = model.trim() || defaultModel;
+  console.log(`✅ Model: ${finalModel}\n`);
 
   // 5. Master Password
-  console.log('\n' + '='.repeat(60));
+  console.log('='.repeat(60));
   console.log('🔐 MOT DE PASSE MAÎTRE');
   console.log('='.repeat(60));
   console.log('\nCe mot de passe servira à chiffrer votre configuration.');
   console.log('⚠️  Il doit être fort (min 12 caractères) et unique !');
   console.log('⚠️  Sans lui, impossible de déchiffrer votre config.');
-  console.log('💡 Si vous l\'oubliez: refaites "npx @oalacea/ex-g-se config"\n');
+  console.log('💡 Si vous l\'oubliez: refaites "exg config"\n');
 
   const masterPassword1 = await promptPassword(rl, 'Mot de passe maître: ');
 
-  if (masterPassword1.length < 12) {
+  if (!masterPassword1 || masterPassword1.length < 12) {
     console.error('\n❌ Le mot de passe doit faire au moins 12 caractères');
+    console.error('   Caractères reçus: ' + (masterPassword1 ? masterPassword1.length : 0) + '\n');
     rl.close();
     process.exit(1);
   }

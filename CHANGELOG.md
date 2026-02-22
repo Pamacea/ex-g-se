@@ -5,6 +5,24 @@ All notable changes to EX-G-SE will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.7] - 2025-02-22
+
+### Added
+- ⚡ **New update command** - `exg update`
+  - Automatically updates to latest version via npm
+  - Simple way to stay current
+
+### Fixed
+- 🔧 **Improved config flow robustness**
+  - Better handling of default values for API URL and Model
+  - Trim whitespace from inputs
+  - Added confirmation messages for each step
+  - Better error messages with character counts
+
+### Changed
+- Help message now includes `exg update` command
+- Better user feedback during configuration
+
 ## [0.3.6] - 2025-02-22
 
 ### Fixed
