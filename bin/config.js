@@ -118,11 +118,39 @@ function getDefaultUrl(provider) {
   return defaults[provider] || '';
 }
 
+function getAvailableModels(provider) {
+  const models = {
+    openai: [
+      { name: 'gpt-5.2', description: 'Latest GPT-5.2 (Recommended)' },
+      { name: 'gpt-4o', description: 'GPT-4 Omni' },
+      { name: 'gpt-4o-mini', description: 'Faster, cost-effective' },
+      { name: 'gpt-4-turbo', description: 'Legacy GPT-4 Turbo' },
+    ],
+    anthropic: [
+      { name: 'claude-opus-4-20250514', description: 'Claude Opus 4.6 (Most capable)' },
+      { name: 'claude-sonnet-4-20250514', description: 'Claude Sonnet 4.6 (Recommended)' },
+      { name: 'claude-3-5-sonnet-20241022', description: 'Claude 3.5 Sonnet (Legacy)' },
+      { name: 'claude-3-5-haiku-20241022', description: 'Fast, cost-effective' },
+    ],
+    'z.ai': [
+      { name: 'glm-5', description: 'GLM-5 (Latest, Recommended)' },
+      { name: 'glm-4.7', description: 'GLM-4.7 (205K context)' },
+      { name: 'glm-4.7-flash', description: 'GLM-4.7 Flash (Fast, free)' },
+      { name: 'glm-4.6', description: 'GLM-4.6 (205K context)' },
+      { name: 'glm-4.6v', description: 'GLM-4.6v (128K, cheaper)' },
+      { name: 'glm-4.5', description: 'GLM-4.5 (131K context)' },
+      { name: 'glm-4.5-air', description: 'GLM-4.5 Air (cost-effective)' },
+      { name: 'glm-4.5-flash', description: 'GLM-4.5 Flash (free)' },
+    ],
+  };
+  return models[provider] || [];
+}
+
 function getDefaultModel(provider) {
   const defaults = {
-    openai: 'gpt-4o',
-    anthropic: 'claude-3-5-sonnet-20241022',
-    'z.ai': 'zai-latest',
+    openai: 'gpt-5.2',
+    anthropic: 'claude-sonnet-4-20250514',
+    'z.ai': 'glm-5',
   };
   return defaults[provider] || '';
 }
@@ -255,11 +283,34 @@ async function config() {
   const finalApiUrl = apiUrl.trim() || defaultUrl;
   console.log(`✅ URL: ${finalApiUrl}`);
 
-  // 4. Model
+  // 4. Model selection with interactive menu
+  const availableModels = getAvailableModels(provider);
   const defaultModel = getDefaultModel(provider);
-  const model = await prompt(rl, `🤖 Model (default: ${defaultModel}): `);
-  const finalModel = model.trim() || defaultModel;
-  console.log(`✅ Model: ${finalModel}\n`);
+
+  console.log('');
+  console.log('🤖 Available Models:');
+  availableModels.forEach((model, index) => {
+    console.log(`  ${index + 1}. ${model.name.padEnd(35)} ${model.description}`);
+  });
+  console.log(`  0. Default (${defaultModel})`);
+
+  const modelChoice = await prompt(rl, `\nSelect model (0-${availableModels.length}, or type custom name): `);
+  let finalModel;
+
+  if (modelChoice === '0' || modelChoice === '') {
+    finalModel = defaultModel;
+    console.log(`✅ Using default model: ${finalModel}`);
+  } else if (parseInt(modelChoice) >= 1 && parseInt(modelChoice) <= availableModels.length) {
+    const selectedIndex = parseInt(modelChoice) - 1;
+    finalModel = availableModels[selectedIndex].name;
+    console.log(`✅ Selected: ${finalModel}`);
+  } else {
+    // Custom model name
+    finalModel = modelChoice.trim() || defaultModel;
+    console.log(`✅ Using custom model: ${finalModel}`);
+  }
+
+  console.log('');
 
   // 5. Master Password
   console.log('='.repeat(60));

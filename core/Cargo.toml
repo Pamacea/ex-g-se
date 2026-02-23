@@ -1,6 +1,6 @@
 [package]
 name = "ex-g-se"
-version = "0.5.3"
+version = "0.5.4"
 edition = "2021"
 description = "EX-G-SE: Shadow Logging Core Engine with AI Analysis"
 authors = ["EX-G-SE Team"]
