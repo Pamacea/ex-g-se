@@ -113,7 +113,7 @@ function getDefaultUrl(provider) {
   const defaults = {
     openai: 'https://api.openai.com/v1',
     anthropic: 'https://api.anthropic.com/v1',
-    'z.ai': 'https://api.z.ai/v1',
+    'z.ai': 'https://api.z.ai/api/paas/v4',
   };
   return defaults[provider] || '';
 }
