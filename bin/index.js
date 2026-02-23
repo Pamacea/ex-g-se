@@ -558,7 +558,7 @@ function formatBytes(bytes) {
 // ============================================================================
 
 function showHelp() {
-  console.log(chalk.bold('\nEX-G-SE v0.5.4 - Ghost Mode Observability\n'));
+  console.log(chalk.bold('\nEX-G-SE v0.5.6 - Ghost Mode Observability\n'));
   console.log(chalk.cyan('Commands:\n'));
   console.log('  exg, exg --help, exg -h   Show this help message');
   console.log('  exg version, exg --version, exg -v  Show version information');
@@ -598,8 +598,8 @@ async function main() {
 
   if (command === '--version' || command === '-v' || command === 'version') {
     // Version is hardcoded to avoid requiring package.json during runtime
-    console.log(chalk.cyan('\nEX-G-SE v0.5.4\n'));
-    console.log(chalk.gray('Rust Core: v0.5.4'));
+    console.log(chalk.cyan('\nEX-G-SE v0.5.6\n'));
+    console.log(chalk.gray('Rust Core: v0.5.6'));
     console.log(chalk.gray('Released: 2026-02-23\n'));
     return;
   }

@@ -424,7 +424,71 @@ impl AIScriptGenerator {
         };
 
         let full_url = format!("{}/chat/completions", base_url);
-        self.call_openai_with_url(prompt, &full_url).await
+
+        let model = if self.config.model.is_empty() {
+            "glm-5"
+        } else {
+            &self.config.model
+        };
+
+        // Z.AI specific request with thinking parameter
+        let request = json!({
+            "model": model,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "You are an expert technical writer and analyst. Generate engaging, insightful scripts from development sessions."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            "thinking": {"type": "enabled"},
+            "max_tokens": 4096,
+            "temperature": 1.0
+        });
+
+        eprintln!("[AI] Calling Z.AI API: {}", full_url);
+        eprintln!("[AI] Model: {}", model);
+
+        let response = self.client
+            .post(&full_url)
+            .header("Authorization", format!("Bearer {}", self.config.api_key))
+            .header("Content-Type", "application/json")
+            .json(&request)
+            .send()
+            .await?;
+
+        let status = response.status();
+        eprintln!("[AI] Status: {}", status);
+
+        if !status.is_success() {
+            let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+            return Ok(format!("**Error:** API returned status {} - {}\n\n**Response:**\n{}\n\n**Tip:** Check your API key and model name at https://cloud.z-ip.ai",
+                status.as_u16(),
+                status.canonical_reason().unwrap_or("Unknown"),
+                error_text
+            ));
+        }
+
+        let result: serde_json::Value = response.json().await?;
+        eprintln!("[AI] Response keys: {:?}", result.as_object().map(|o| o.keys().collect::<Vec<_>>()));
+
+        // Try standard format
+        if let Some(content) = result["choices"][0]["message"]["content"].as_str() {
+            return Ok(content.to_string());
+        }
+
+        // Try Z.AI specific format
+        if let Some(content) = result["output"]["choices"][0]["message"]["content"].as_str() {
+            return Ok(content.to_string());
+        }
+
+        // Debug: Show actual response structure
+        Ok(format!("**Error: Unexpected response format**\n\n**Response Structure:**\n```json\n{}\n```\n\n**Expected:** `result[\"choices\"][0][\"message\"][\"content\"]`\n\n**Tip:** The API response format may have changed. Check https://cloud.z-ip.ai for documentation.",
+            serde_json::to_string_pretty(&result).unwrap_or_else(|_| "Cannot serialize".to_string())
+        ))
     }
 
     /// Call OpenAI-compatible API with custom URL
@@ -451,6 +515,9 @@ impl AIScriptGenerator {
             "max_tokens": 4000
         });
 
+        eprintln!("[AI] Calling API: {}", url);
+        eprintln!("[AI] Model: {}", model);
+
         let response = self.client
             .post(url)
             .header("Authorization", format!("Bearer {}", self.config.api_key))
@@ -461,6 +528,8 @@ impl AIScriptGenerator {
 
         // Check status code
         let status = response.status();
+        eprintln!("[AI] Status: {}", status);
+
         if !status.is_success() {
             let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
             return Ok(format!("**Error:** API returned status {} - {}\n\n**Response:**\n{}\n\n**Tip:** Check your API key and model name at https://cloud.z-ip.ai",
@@ -471,11 +540,22 @@ impl AIScriptGenerator {
         }
 
         let result: serde_json::Value = response.json().await?;
+        eprintln!("[AI] Response keys: {:?}", result.as_object().map(|o| o.keys().collect::<Vec<_>>()));
 
-        Ok(result["choices"][0]["message"]["content"]
-            .as_str()
-            .unwrap_or("Error: No response from AI")
-            .to_string())
+        // Try multiple response formats
+        if let Some(content) = result["choices"][0]["message"]["content"].as_str() {
+            return Ok(content.to_string());
+        }
+
+        // Z.AI might use different format
+        if let Some(content) = result["output"]["choices"][0]["message"]["content"].as_str() {
+            return Ok(content.to_string());
+        }
+
+        // Debug: Show actual response structure
+        Ok(format!("**Error: Unexpected response format**\n\n**Response Structure:**\n```json\n{}\n```\n\n**Expected:** `result[\"choices\"][0][\"message\"][\"content\"]`\n\n**Tip:** The API response format may have changed. Check https://cloud.z-ip.ai for documentation.",
+            serde_json::to_string_pretty(&result).unwrap_or_else(|_| "Cannot serialize".to_string())
+        ))
     }
 
     /// Generate fallback script without AI
