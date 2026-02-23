@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-02-23
+
+### Fixed - Windows File Watcher
+
+- 🔧 **Replaced notify crate** - Now uses polling-based watcher for Windows
+- ✅ **Reliable file detection** - Actually detects file changes on Windows
+- 📁 **Recursive scanning** - Monitors subdirectories
+- 🎯 **Smart filtering** - Skips binary files, logs, and common build artifacts
+- ⏱️ **Debouncing** - Prevents duplicate events (3-second window)
+
+### Technical Changes
+
+Windows file watcher now:
+- Polls every 2 seconds for file changes
+- Recursively scans all subdirectories
+- Tracks modification times
+- Filters out binary files (exe, dll, png, pdf, etc.)
+- Shows "[FS] File changed:" message when files are modified
+
+### Commands Added in v0.4.9
+
+- `exg version` / `exg --version` / `exg -v` - Show version
+- `exg update` - Fixed to use `npm install -g @latest`
+
 ## [0.4.9] - 2026-02-23
 
 ### Added - Version Command
