@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.0.3] - 2026-02-23
+
+### Added - Output Files in Project Directory
+
+- 📁 **Project output files** - Generated in `.ex-g-se/` directory on session save
+  - `session.json` - Raw session data (same as home directory)
+  - `timeline.json` - Structured timeline with all events
+  - `summary.md` - Human-readable markdown summary
+  - `script.json` - Basic script format for future video export
+  - `screenshots/` - All screenshots from session
+
+### Improved
+
+- Output files now created in **both** locations:
+  - `~/.ex-g-se/sessions/` - Home directory (historical sessions)
+  - `.ex-g-se/` - Project directory (current session files)
+
+### Technical Details
+
+**File Generation:**
+- `generate_output_files()` creates all 4 output files
+- Timeline structured with timestamps, types, descriptions
+- Summary includes statistics and detailed timeline
+- Script format compatible with video export system
+
 ## [4.0.1] - 2026-02-23
 
 ### Fixed

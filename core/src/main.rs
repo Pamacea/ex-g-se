@@ -57,6 +57,15 @@ struct SessionLogs {
     events: Vec<LogEntry>,
 }
 
+/// Simple timeline entry for output
+#[derive(Debug, Clone, Serialize)]
+struct SimpleTimelineEntry {
+    timestamp: String,
+    event_type: String,
+    description: String,
+    details: serde_json::Value,
+}
+
 // ============================================================================
 // Application State
 // ============================================================================
@@ -137,6 +146,188 @@ impl ExGSeEngine {
     }
 
     /// Write logs to file in sessions directory
+    /// Generate all output files in project .ex-g-se directory
+    fn generate_output_files(&self) -> Result<()> {
+        // Create .ex-g-se directory in current working directory
+        let output_dir = PathBuf::from(".ex-g-se");
+        fs::create_dir_all(&output_dir)?;
+        fs::create_dir_all(output_dir.join("screenshots"))?;
+
+        eprintln!("[INFO] Generating output files in .ex-g-se/...");
+
+        // 1. Save session.json (raw session data)
+        let session_path = output_dir.join("session.json");
+        let logs = SessionLogs {
+            start_time: self.start_time,
+            end_time: Some(Utc::now()),
+            events: self.events.clone(),
+        };
+        let json = serde_json::to_string_pretty(&logs)?;
+        let mut file = File::create(&session_path)?;
+        file.write_all(json.as_bytes())?;
+        file.flush()?;
+        file.sync_all()?;
+        eprintln!("  ✓ session.json");
+
+        // 2. Generate timeline.json
+        let timeline = self.generate_timeline();
+        let timeline_path = output_dir.join("timeline.json");
+        let timeline_json = serde_json::to_string_pretty(&timeline)?;
+        let mut file = File::create(&timeline_path)?;
+        file.write_all(timeline_json.as_bytes())?;
+        file.flush()?;
+        eprintln!("  ✓ timeline.json");
+
+        // 3. Generate summary.md
+        let summary = self.generate_summary(&timeline);
+        let summary_path = output_dir.join("summary.md");
+        let mut file = File::create(&summary_path)?;
+        file.write_all(summary.as_bytes())?;
+        file.flush()?;
+        eprintln!("  ✓ summary.md");
+
+        // 4. Generate script.json (basic timeline-based script)
+        let script = self.generate_basic_script(&timeline);
+        let script_path = output_dir.join("script.json");
+        let script_json = serde_json::to_string_pretty(&script)?;
+        let mut file = File::create(&script_path)?;
+        file.write_all(script_json.as_bytes())?;
+        file.flush()?;
+        eprintln!("  ✓ script.json");
+
+        eprintln!("[INFO] Output files created successfully");
+        Ok(())
+    }
+
+    /// Generate timeline from events
+    fn generate_timeline(&self) -> Vec<SimpleTimelineEntry> {
+        let mut timeline = Vec::new();
+        let mut clipboard_count = 0;
+        let mut fs_count = 0;
+        let mut screenshot_count = 0;
+
+        for event in &self.events {
+            match event.event_type.as_str() {
+                "clipboard" => {
+                    clipboard_count += 1;
+                    timeline.push(SimpleTimelineEntry {
+                        timestamp: event.timestamp.format("%H:%M:%S").to_string(),
+                        event_type: "clipboard".to_string(),
+                        description: format!(
+                            "Clipboard change #{} ({} chars)",
+                            clipboard_count,
+                            event.data["length"].as_u64().unwrap_or(0)
+                        ),
+                        details: event.data.clone(),
+                    });
+                }
+                "fs_change" => {
+                    fs_count += 1;
+                    let path = event.data["path"].as_str().unwrap_or("unknown");
+                    let op = event.data["operation"].as_str().unwrap_or("modified");
+                    timeline.push(SimpleTimelineEntry {
+                        timestamp: event.timestamp.format("%H:%M:%S").to_string(),
+                        event_type: "fs_change".to_string(),
+                        description: format!("File #{}: {} ({})", fs_count, path, op),
+                        details: event.data.clone(),
+                    });
+                }
+                "screenshot" => {
+                    screenshot_count += 1;
+                    let path = event.data["path"].as_str().unwrap_or("unknown");
+                    timeline.push(SimpleTimelineEntry {
+                        timestamp: event.timestamp.format("%H:%M:%S").to_string(),
+                        event_type: "screenshot".to_string(),
+                        description: format!("Screenshot #{}: {}", screenshot_count, path),
+                        details: event.data.clone(),
+                    });
+                }
+                _ => {
+                    timeline.push(SimpleTimelineEntry {
+                        timestamp: event.timestamp.format("%H:%M:%S").to_string(),
+                        event_type: event.event_type.clone(),
+                        description: format!("Unknown event: {}", event.event_type),
+                        details: event.data.clone(),
+                    });
+                }
+            }
+        }
+
+        timeline
+    }
+
+    /// Generate markdown summary
+    fn generate_summary(&self, timeline: &[SimpleTimelineEntry]) -> String {
+        let start_time = self.start_time.format("%Y-%m-%d %H:%M:%S");
+        let end_time = Utc::now().format("%Y-%m-%d %H:%M:%S");
+        let duration = (Utc::now() - self.start_time).num_seconds();
+
+        let clip_count = timeline.iter().filter(|t| t.event_type == "clipboard").count();
+        let fs_count = timeline.iter().filter(|t| t.event_type == "fs_change").count();
+        let screenshot_count = timeline.iter().filter(|t| t.event_type == "screenshot").count();
+
+        let mut summary = String::new();
+
+        summary.push_str("# EX-G-SE Session Summary\n\n");
+        summary.push_str(&format!("**Start:** {} UTC\n", start_time));
+        summary.push_str(&format!("**End:** {} UTC\n", end_time));
+        summary.push_str(&format!("**Duration:** {} seconds\n\n", duration));
+
+        summary.push_str("## Statistics\n\n");
+        summary.push_str(&format!("- **Total Events:** {}\n", self.events.len()));
+        summary.push_str(&format!("- **Clipboard Changes:** {}\n", clip_count));
+        summary.push_str(&format!("- **File Changes:** {}\n", fs_count));
+        summary.push_str(&format!("- **Screenshots:** {}\n\n", screenshot_count));
+
+        summary.push_str("## Timeline\n\n");
+        for (i, entry) in timeline.iter().enumerate() {
+            summary.push_str(&format!("### {} - {}\n\n", i + 1, entry.timestamp));
+            summary.push_str(&format!("**Type:** `{}`\n\n", entry.event_type));
+            summary.push_str(&format!("{}\n\n", entry.description));
+        }
+
+        summary.push_str("\n---\n*Generated by EX-G-SE v4.0.2*\n");
+        summary
+    }
+
+    /// Generate basic script from timeline
+    fn generate_basic_script(&self, timeline: &[SimpleTimelineEntry]) -> serde_json::Value {
+        json!({
+            "title": format!("Session - {}", self.start_time.format("%Y-%m-%d %H:%M")),
+            "duration_minutes": (Utc::now() - self.start_time).num_minutes(),
+            "acts": [{
+                "number": 1,
+                "title": "Development Session",
+                "time_range": (
+                    self.start_time.format("%H:%M").to_string(),
+                    Utc::now().format("%H:%M").to_string()
+                ),
+                "intent": "Development work",
+                "scenes": timeline.iter().enumerate().map(|(i, entry)| {
+                    json!({
+                        "number": i + 1,
+                        "timestamp": entry.timestamp,
+                        "title": entry.event_type,
+                        "description": entry.description,
+                        "actions": [],
+                        "dialogue": [],
+                        "screenshot": if entry.event_type == "screenshot" {
+                            entry.details.get("path").and_then(|p| p.as_str())
+                        } else {
+                            None
+                        },
+                        "code_notes": []
+                    })
+                }).collect::<Vec<_>>()
+            }],
+            "metadata": {
+                "total_events": self.events.len(),
+                "generated_at": Utc::now().to_rfc3339()
+            }
+        })
+    }
+
+    /// Write logs to file in sessions directory (home)
     fn save_logs(&self) -> Result<()> {
         // Create sessions directory
         let sessions_dir = dirs::home_dir()
@@ -343,7 +534,7 @@ impl ExGSeEngine {
 
     /// Main run loop with CLI limits
     async fn run(&mut self) -> Result<()> {
-        eprintln!("EX-G-SE Core Engine v4.0.1 - Ghost Mode");
+        eprintln!("EX-G-SE Core Engine v4.0.3 - Ghost Mode");
         eprintln!("========================================");
         eprintln!("[INFO] Starting shadow logging session...");
 
@@ -420,14 +611,19 @@ impl ExGSeEngine {
         // Small delay to ensure all events are collected
         tokio::time::sleep(Duration::from_millis(200)).await;
 
-        // Save logs on shutdown
+        // Generate output files in project directory
         eprintln!("\n[INFO] Saving session...");
+        if let Err(e) = self.generate_output_files() {
+            eprintln!("[WARN] Failed to generate output files: {}", e);
+        }
+
+        // Also save to home directory sessions
         match self.save_logs() {
             Ok(()) => {
                 // Success message already shown
             }
             Err(e) => {
-                eprintln!("\n[ERROR] Failed to save session: {}", e);
+                eprintln!("[WARN] Failed to save to home directory: {}", e);
             }
         }
 
