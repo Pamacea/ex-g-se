@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-02-23
+
+### Fixed - NPM Package Installation
+
+- 🔧 **Fixed package.json requirement** - Version now hardcoded instead of requiring package.json
+- 📦 **Added package.json to NPM files** - Prevents "Cannot find module" error
+- ✅ **Installation now works** - npm install -g @oalacea/ex-g-se@latest installs correctly
+
 ## [0.5.0] - 2026-02-23
 
 ### Fixed - Windows File Watcher
