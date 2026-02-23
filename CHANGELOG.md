@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.6] - 2026-02-23
+
+### Fixed - AI Config Not Loading
+
+- 🔧 **Fixed AI script generation** - Config now properly passed from Node.js to Rust via environment variables
+- 🔐 **Removed encrypted file reading** - Rust now reads config from env vars set by Node.js wrapper
+- ✅ **AI script generation now works** - Theatrical scripts with AI analysis are generated correctly
+
+### Technical Changes
+
+- Node.js wrapper now passes config to Rust binary via `EX_G_SE_PROVIDER`, `EX_G_SE_API_KEY`, `EX_G_SE_API_URL`, `EX_G_SE_MODEL` environment variables
+- Rust `AIScriptGenerator::load_config()` reads from environment variables first
+
 ## [0.4.5] - 2026-02-23
 
 ### Added - AI-Powered Script Generation

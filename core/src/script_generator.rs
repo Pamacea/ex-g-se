@@ -96,6 +96,23 @@ impl AIScriptGenerator {
 
     /// Load and decrypt AI config
     fn load_config() -> Result<AIProviderConfig> {
+        // Try environment variables first (set by Node.js wrapper)
+        if let Ok(provider) = std::env::var("EX_G_SE_PROVIDER") {
+            let api_key = std::env::var("EX_G_SE_API_KEY").unwrap_or_default();
+            let api_url = std::env::var("EX_G_SE_API_URL").unwrap_or_default();
+            let model = std::env::var("EX_G_SE_MODEL").unwrap_or_default();
+
+            if !api_key.is_empty() {
+                return Ok(AIProviderConfig {
+                    provider,
+                    api_key,
+                    api_url,
+                    model,
+                });
+            }
+        }
+
+        // Fallback to encrypted file (for backward compatibility)
         let config_dir = dirs::home_dir()
             .map(|h| h.join(".config").join("ex-g-se"))
             .unwrap_or_else(|| PathBuf::from(".config/ex-g-se"));
@@ -111,17 +128,13 @@ impl AIScriptGenerator {
             });
         }
 
-        // Read encrypted config
-        let encrypted_data = fs::read_to_string(&config_path)?;
-
-        // Parse JSON (should be decrypted already by Node.js wrapper)
-        let config: serde_json::Value = serde_json::from_str(&encrypted_data)?;
-
+        // Note: The encrypted file cannot be decrypted by Rust directly
+        // It needs to be passed via environment variables from Node.js wrapper
         Ok(AIProviderConfig {
-            provider: config["provider"].as_str().unwrap_or("openai").to_string(),
-            api_key: config["apiKey"].as_str().unwrap_or("").to_string(),
-            api_url: config["apiUrl"].as_str().unwrap_or("").to_string(),
-            model: config["model"].as_str().unwrap_or("").to_string(),
+            provider: "none".to_string(),
+            api_key: String::new(),
+            api_url: String::new(),
+            model: String::new(),
         })
     }
 

@@ -744,8 +744,17 @@ async function main() {
     console.log(chalk.gray('⏸️  Session will be saved and you can press ENTER to exit\n'));
 
     try {
+      // Pass config to Rust binary via environment variables
+      const env = {
+        ...process.env,
+        EX_G_SE_PROVIDER: config.provider,
+        EX_G_SE_API_KEY: config.api_key,
+        EX_G_SE_API_URL: config.api_url,
+        EX_G_SE_MODEL: config.model,
+      };
+
       // Run the Rust binary (it will save directly to ~/.ex-g-se/sessions/)
-      execSync(`"${binaryPath}"`, { stdio: 'inherit' });
+      execSync(`"${binaryPath}"`, { stdio: 'inherit', env });
     } catch (e) {
       // Binary exited (normal)
     }
