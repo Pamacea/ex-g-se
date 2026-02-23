@@ -1,10 +1,10 @@
-# EX-G-SE v4.0.0
+# EX-G-SE v0.5.3
 
 > **AI-powered shadow logging observability for development sessions**
 
 ```
 .--------------------------------------------------------------.
-|  EX-G-SE  v4.0.0  |  GHOST OBSERVABILITY + AI ANALYSIS   |
+|  EX-G-SE  v0.5.3  |  GHOST OBSERVABILITY + AI ANALYSIS   |
 '--------------------------------------------------------------'
 ```
 

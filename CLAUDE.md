@@ -1,4 +1,4 @@
-# CLAUDE.md - EX-G-SE Project Configuration v4.0.0
+# CLAUDE.md - EX-G-SE Project Configuration v0.5.3
 
 > **Last Updated:** 2025-02-22
 > **Version:** 4.0.0
@@ -86,7 +86,7 @@ npm run lint
 npm run release
 ```
 
-### User Commands (v4.0.0)
+### User Commands (v0.5.3)
 ```bash
 # Configuration
 exg config              # Configure AI provider
@@ -231,7 +231,7 @@ Before committing:
 
 ## 📦 Dependencies
 
-### Rust (v4.0.0)
+### Rust (v0.5.3)
 ```toml
 # Core
 tokio = { version = "1", features = ["full"] }
@@ -277,7 +277,7 @@ notify = "6"
 winapi = { version = "0.3", features = ["winuser", "wingdi"] }
 ```
 
-### Node.js (v4.0.0)
+### Node.js (v0.5.3)
 ```json
 {
   "dependencies": {
@@ -342,7 +342,7 @@ winapi = { version = "0.3", features = ["winuser", "wingdi"] }
 3. **User Feedback** - Live progress, session summary, clear exit
 4. **Session Management** - Multiple sessions, search, stats, export
 5. **Smart Filtering** - Ignores noise (node_modules, .git, target, dist, etc.)
-6. **Cross-Platform** - macOS and Windows (Linux removed in v4.0.0)
+6. **Cross-Platform** - macOS and Windows (Linux removed in v0.5.3)
 7. **Privacy Respecting** - All data stored locally, no telemetry
 
 ---
@@ -356,15 +356,15 @@ winapi = { version = "0.3", features = ["winuser", "wingdi"] }
    - `CHANGELOG.md`
 2. Commit with Git Flow Master format
 3. Push to main
-4. Create tag: `git tag v4.0.0`
-5. Push tag: `git push origin v4.0.0`
+4. Create tag: `git tag v0.5.3`
+5. Push tag: `git push origin v0.5.3`
 6. GitHub Actions builds and publishes to NPM
 
 **Note:** Don't manually publish - use GitHub workflow
 
 ---
 
-## 🆕 What's New in v4.0.0
+## 🆕 What's New in v0.5.3
 
 ### Features Added
 1. **Live progress indicator** - Stats every 30 seconds during recording

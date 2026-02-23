@@ -1,10 +1,10 @@
-# EX-G-SE Guide v4.0.0
+# EX-G-SE Guide v0.5.3
 
 Complete guide for EX-G-SE - AI-powered shadow logging observability tool.
 
 ```
 .--------------------------------------------------------------.
-|             EX-G-SE v4.0.0 - COMPLETE GUIDE                 |
+|             EX-G-SE v0.5.3 - COMPLETE GUIDE                 |
 '--------------------------------------------------------------'
 ```
 
@@ -698,7 +698,7 @@ npm run build
 # This builds:
 # - macOS (Apple Silicon & Intel)
 # - Windows (x64)
-# - Linux (removed in v4.0.0)
+# - Linux (removed in v0.5.3)
 ```
 
 #### Creating a Release

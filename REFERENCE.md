@@ -1,10 +1,10 @@
-# EX-G-SE Command Reference v4.0.0
+# EX-G-SE Command Reference v0.5.3
 
 Quick reference for all EX-G-SE commands.
 
 ```
 .--------------------------------------------------------------.
-|              EX-G-SE v4.0.0 - COMMAND REFERENCE             |
+|              EX-G-SE v0.5.3 - COMMAND REFERENCE             |
 '--------------------------------------------------------------'
 ```
 
@@ -729,7 +729,7 @@ done
 exg --version
 ```
 
-**Output:** `EX-G-SE v4.0.0`
+**Output:** `EX-G-SE v0.5.3`
 
 ---
 

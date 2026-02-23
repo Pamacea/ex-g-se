@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-02-23
+
+### Fixed - Version Synchronization
+
+- 🔧 **Fixed hardcoded versions** - All version strings now synchronized
+- ✅ **Rust core displays v0.5.3** - Core engine shows correct version
+- 📦 **Node.js wrapper v0.5.3** - All CLI tools show v0.5.3
+- 🔨 **Full rebuild** - All binaries recompiled with correct version
+
+### Technical Changes
+
+- Updated version strings in: main.rs, index.js, Cargo.toml, package.json
+- Rust core binary now displays: "EX-G-SE Core Engine v0.5.2 - Ghost Mode"
+
 ## [0.5.2] - 2026-02-23
 
 ### Fixed - Script.md Always Created

@@ -1,10 +1,10 @@
-# EX-G-SE Architecture v4.0.0
+# EX-G-SE Architecture v0.5.3
 
 Complete architectural overview of the EX-G-SE shadow logging system.
 
 ```
 .--------------------------------------------------------------.
-|           EX-G-SE v4.0.0 - GHOST OBSERVABILITY ENGINE       |
+|           EX-G-SE v0.5.3 - GHOST OBSERVABILITY ENGINE       |
 |                                                              |
 |        AI-Powered Shadow Logging for Developers             |
 '--------------------------------------------------------------'
@@ -32,14 +32,14 @@ EX-G-SE is a **hybrid Rust/Node.js application** designed for zero-configuration
 1. **Performance First** - Rust core for system-level monitoring
 2. **Zero Config** - Works out of the box with sensible defaults
 3. **Secure by Default** - AES-256-GCM encryption for credentials
-4. **Cross-Platform** - macOS and Windows support (Linux removed in v4.0.0)
+4. **Cross-Platform** - macOS and Windows support (Linux removed in v0.5.3)
 5. **Privacy Respecting** - All data stored locally
 
 ---
 
 ## Technology Stack
 
-### Rust Core (v4.0.0)
+### Rust Core (v0.5.3)
 
 | Component | Crate | Version | Purpose |
 |-----------|-------|---------|---------|
@@ -60,7 +60,7 @@ EX-G-SE is a **hybrid Rust/Node.js application** designed for zero-configuration
 | **UUID** | uuid | 1.6 | Session IDs |
 | **Home Dir** | dirs | 5.x | Platform paths |
 
-### Node.js Wrapper (v4.0.0)
+### Node.js Wrapper (v0.5.3)
 
 | Component | Package | Version | Purpose |
 |-----------|---------|---------|---------|
@@ -192,7 +192,7 @@ EX-G-SE is a **hybrid Rust/Node.js application** designed for zero-configuration
 - `ExGSeEngine::save_logs()` - Save to sessions directory
 - `format_duration()` - Human-readable time format
 
-#### cli.rs (NEW in v4.0.0)
+#### cli.rs (NEW in v0.5.3)
 **Responsibilities:**
 - Command-line argument parsing
 - CLI configuration struct
@@ -427,7 +427,7 @@ User runs: exg export markdown
 
 ## Security Architecture
 
-### Encryption (v4.0.0)
+### Encryption (v0.5.3)
 
 **Algorithm:** AES-256-GCM (Galois/Counter Mode)
 
@@ -574,7 +574,7 @@ User runs: exg export markdown
 
 ## Platform Support
 
-### Platform Matrix (v4.0.0)
+### Platform Matrix (v0.5.3)
 
 | Platform | Architecture | Triple | Binary Name | Status |
 |----------|-------------|--------|-------------|--------|
@@ -615,7 +615,7 @@ User runs: exg export markdown
 - `winapi` for screenshots (user32, gdi32)
 - Works out of the box
 
-#### Linux (Unsupported in v4.0.0)
+#### Linux (Unsupported in v0.5.3)
 
 **Reason for Removal:**
 - System dependencies: libudev, wayland, X11
@@ -679,7 +679,7 @@ User runs: exg export markdown
 ### Network Usage
 
 **Recording:** 0 KB (offline)
-**AI Analysis:** On-demand (not automatic in v4.0.0)
+**AI Analysis:** On-demand (not automatic in v0.5.3)
 
 ---
 
@@ -721,7 +721,7 @@ User runs: exg export markdown
 **Build Matrix:**
 - macOS (Intel & ARM)
 - Windows (x64)
-- Linux (removed in v4.0.0)
+- Linux (removed in v0.5.3)
 
 ### Release Process
 
@@ -739,7 +739,7 @@ User runs: exg export markdown
 
 ## Version History
 
-**v4.0.0** (2025-02-22)
+**v0.5.3** (2025-02-22)
 - Major feature release
 - Session management (list, search, stats)
 - Export formats (JSON, Markdown, CSV)

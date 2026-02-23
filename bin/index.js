@@ -558,7 +558,7 @@ function formatBytes(bytes) {
 // ============================================================================
 
 function showHelp() {
-  console.log(chalk.bold('\nEX-G-SE v0.5.2 - Ghost Mode Observability\n'));
+  console.log(chalk.bold('\nEX-G-SE v0.5.3 - Ghost Mode Observability\n'));
   console.log(chalk.cyan('Commands:\n'));
   console.log('  exg, exg --help, exg -h   Show this help message');
   console.log('  exg version, exg --version, exg -v  Show version information');
@@ -598,8 +598,8 @@ async function main() {
 
   if (command === '--version' || command === '-v' || command === 'version') {
     // Version is hardcoded to avoid requiring package.json during runtime
-    console.log(chalk.cyan('\nEX-G-SE v0.5.2\n'));
-    console.log(chalk.gray('Rust Core: v0.5.2'));
+    console.log(chalk.cyan('\nEX-G-SE v0.5.3\n'));
+    console.log(chalk.gray('Rust Core: v0.5.3'));
     console.log(chalk.gray('Released: 2026-02-23\n'));
     return;
   }
@@ -637,7 +637,7 @@ async function main() {
     try {
       execSync('npm install -g @oalacea/ex-g-se@latest', { stdio: 'inherit' });
       console.log(chalk.green('\n✅ Updated successfully!\n'));
-      console.log(chalk.gray('Current version: 0.5.2\n'));
+      console.log(chalk.gray('Current version: 0.5.3\n'));
     } catch (error) {
       console.error(chalk.red('\n❌ Update failed:'), error.message);
       process.exit(1);
