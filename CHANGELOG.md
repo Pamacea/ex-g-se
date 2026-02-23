@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.9] - 2026-02-23
+
+### Added - Version Command
+
+- ✅ **New command**: `exg version` or `exg --version` or `exg -v`
+- 🔧 **Fixed update command**: Now uses `npm install -g @latest` instead of `npm update`
+- 📝 **Updated help**: Added version command to help text
+
+### Commands
+
+```bash
+exg version              # Show version
+exg --version           # Show version (short form)
+exg -v                  # Show version (shortest)
+exg update              # Now properly updates to latest
+```
+
 ## [0.4.8] - 2026-02-23
 
 ### Fixed - Better API Error Handling

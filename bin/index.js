@@ -560,6 +560,8 @@ function formatBytes(bytes) {
 function showHelp() {
   console.log(chalk.bold('\nEX-G-SE v4.0.0 - Ghost Mode Observability\n'));
   console.log(chalk.cyan('Commands:\n'));
+  console.log('  exg, exg --help, exg -h   Show this help message');
+  console.log('  exg version, exg --version, exg -v  Show version information');
   console.log('  exg config              Configure AI provider');
   console.log('  exg config list         Show current configuration');
   console.log('  exg config test         Test API connection');
@@ -591,6 +593,18 @@ async function main() {
   const command = args[0];
 
   // ============================================================================
+  // VERSION COMMAND
+  // ============================================================================
+
+  if (command === '--version' || command === '-v' || command === 'version') {
+    const packageJson = require('./package.json');
+    console.log(chalk.cyan(`\nEX-G-SE v${packageJson.version}\n`));
+    console.log(chalk.gray('Rust Core: v4.0.0'));
+    console.log(chalk.gray('Released: 2026-02-23\n'));
+    return;
+  }
+
+  // ============================================================================
   // CONFIG COMMANDS
   // ============================================================================
 
@@ -618,10 +632,13 @@ async function main() {
   // ============================================================================
 
   if (command === 'update') {
-    console.log(chalk.cyan('\n🔄 Checking for updates...\n'));
+    console.log(chalk.cyan('\n🔄 Updating to latest version...\n'));
+    console.log(chalk.gray('This will install the latest version from NPM.\n'));
     try {
-      execSync('npm update -g @oalacea/ex-g-se', { stdio: 'inherit' });
+      execSync('npm install -g @oalacea/ex-g-se@latest', { stdio: 'inherit' });
       console.log(chalk.green('\n✅ Updated successfully!\n'));
+      const packageJson = require('./package.json');
+      console.log(chalk.gray(`Current version: ${packageJson.version}\n`));
     } catch (error) {
       console.error(chalk.red('\n❌ Update failed:'), error.message);
       process.exit(1);
