@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.6] - 2026-02-23
+
+### Fixed - Z.AI API Debugging
+
+- 🔍 **Detailed AI debugging output** - Shows URL, model, status code, response keys
+- 🧠 **Added Z.AI 'thinking' parameter** - Enhanced reasoning for GLM models
+- 📊 **Better error reporting** - Shows actual API response structure when format mismatch
+- 🔧 **Multiple response format support** - Tries both standard and Z.AI-specific formats
+
+### Technical Changes
+
+- Added eprintln! debugging for AI calls (URL, model, status, response structure)
+- Z.AI requests now include `"thinking": {"type": "enabled"}` parameter
+- Z.AI uses custom request format with max_tokens=4096, temperature=1.0
+- Fallback error message shows pretty-printed JSON response for debugging
+
+## [0.5.5] - 2026-02-23
+
+### Fixed - Z.AI API Endpoint
+
+- 🔗 **Corrected Z.AI API URL** - Now uses `/api/paas/v4/chat/completions`
+- 🆕 **Added GLM-5 model** - Latest Z.AI model available
+- 📋 **Updated model lists** - GPT-5.2, Claude 4.6, GLM-4.5/4.6/4.7/5
+- ✂️ **Removed 'zai/' prefix** - Models now use clean names (glm-5, not zai/glm-5)
+
+### Technical Changes
+
+- Updated `bin/config.js` default Z.AI URL to `https://api.z.ai/api/paas/v4`
+- Updated `core/src/script_generator.rs` to use correct endpoint structure
+- Interactive model selection menu with up-to-date model lists
+
 ## [0.5.4] - 2026-02-23
 
 ### Fixed - Version Synchronization
