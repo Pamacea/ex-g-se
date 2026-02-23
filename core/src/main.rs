@@ -20,7 +20,7 @@ use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 use serde_json::json;
-use ex_g_se::{capture_screenshot, fs_watcher, CliConfig, extract_project_context};
+use ex_g_se::{capture_screenshot, fs_watcher, CliConfig, AIScriptGenerator, ScriptGenerationInput, ScriptEvent, extract_project_context, extract_code_files, CodeFile, ScriptScreenshotInfo};
 use std::fs::{self, File};
 use std::io::{self, Write};
 use std::path::PathBuf;
@@ -226,8 +226,41 @@ impl ExGSeEngine {
         md
     }
 
+    /// Prepare input for script generation with code and screenshots
+    fn prepare_script_input(&self, timeline: &[SimpleTimelineEntry]) -> ScriptGenerationInput {
+        let events: Vec<ScriptEvent> = timeline.iter().map(|entry| ScriptEvent {
+            timestamp: entry.timestamp.clone(),
+            event_type: entry.event_type.clone(),
+            description: entry.description.clone(),
+            details: entry.details.clone(),
+        }).collect();
+
+        // Extract code from modified files
+        let code_context = extract_code_files(&events);
+
+        // Extract screenshots
+        let screenshots: Vec<ScriptScreenshotInfo> = self.events.iter()
+            .filter(|e| e.event_type == "screenshot")
+            .filter_map(|e| e.data.get("path"))
+            .filter_map(|p| p.as_str())
+            .map(|p| ScriptScreenshotInfo {
+                path: p.to_string(),
+                timestamp: Utc::now().format("%H:%M:%S").to_string(),
+            })
+            .collect();
+
+        ScriptGenerationInput {
+            session_start: self.start_time,
+            session_end: Utc::now(),
+            events,
+            project_context: extract_project_context(),
+            code_context,
+            screenshots,
+        }
+    }
+
     /// Generate all output files in project .ex-g-se directory
-    fn generate_output_files(&self) -> Result<()> {
+    async fn generate_output_files(&self) -> Result<()> {
         // Create .ex-g-se directory in current working directory
         let output_dir = PathBuf::from(".ex-g-se");
         fs::create_dir_all(&output_dir)?;
@@ -266,8 +299,19 @@ impl ExGSeEngine {
         file.flush()?;
         eprintln!("  ✓ summary.md");
 
-        // 4. Generate script.md (AI-powered or basic) - simplified without async
-        let script_content = self.generate_basic_script_text(&timeline);
+        // 4. Generate script.md (AI-powered with code analysis) - run in blocking thread
+        eprintln!("  Generating script (with AI and code analysis)...");
+        let script_input = self.prepare_script_input(&timeline);
+
+        let script_content = tokio::task::spawn_blocking(move || {
+            let rt = tokio::runtime::Runtime::new()?;
+            let generator = AIScriptGenerator::new()?;
+
+            rt.block_on(async move {
+                generator.generate(&script_input).await
+            })
+        })
+        .await??;
 
         let script_path = output_dir.join("script.md");
         let mut file = File::create(&script_path)?;
@@ -577,7 +621,7 @@ impl ExGSeEngine {
 
     /// Main run loop with CLI limits
     async fn run(&mut self) -> Result<()> {
-        eprintln!("EX-G-SE Core Engine v0.4.4 - Ghost Mode");
+        eprintln!("EX-G-SE Core Engine v0.4.5 - Ghost Mode");
         eprintln!("========================================");
         eprintln!("[INFO] Starting shadow logging session...");
 
@@ -656,7 +700,7 @@ impl ExGSeEngine {
 
         // Generate output files in project directory
         eprintln!("\n[INFO] Saving session...");
-        if let Err(e) = self.generate_output_files() {
+        if let Err(e) = self.generate_output_files().await {
             eprintln!("[WARN] Failed to generate output files: {}", e);
         }
 

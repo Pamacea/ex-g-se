@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.5] - 2026-02-23
+
+### Added - AI-Powered Script Generation
+
+- 🤖 **Full AI integration** for script generation
+- 📖 **Code analysis** - Reads and includes modified file contents
+- 🖼️ **Screenshot integration** - Includes screenshots in AI analysis
+- 🎭 **Theatrical narrative** - AI generates engaging story format
+- 💭 **Developer thoughts** - AI captures intentions and reasoning
+- 🔍 **Technical context** - Analyzes CLAUDE.md and project structure
+
+### Script Enhancement
+
+The AI now receives:
+- **Session timeline** - All events with timestamps
+- **Modified files** - Full code content (first 500 chars per file)
+- **Screenshots** - All captures with file paths
+- **Project context** - CLAUDE.md, tech stack, structure
+- **Clipboard** - Text content for context
+
+### Generated Script Format
+
+```markdown
+# [Engaging Title]
+
+## Act 1 - [The Purpose/Goal]
+
+### Scene 1 - [HH:MM:SS] - [Brief Moment Title]
+
+**[Stage Direction]**
+The developer [action]. [Technical detail].
+
+**Developer's Thoughts:**
+> [Internal monologue - what they're thinking and why]
+
+**Technical Context:**
+> [Relevant technical details from the code/project]
+```
+
+### Technical
+
+- Added: `ScriptScreenshotInfo` to avoid conflicts
+- Enhanced: `build_detailed_prompt()` with code analysis
+- Added: `extract_code_files()` - reads modified files
+- Added: `detect_language()` - detects programming languages
+- Fixed: Async/await conflicts in script generation
+
 ## [0.4.4] - 2026-02-23
 
 ### Fixed

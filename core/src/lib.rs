@@ -26,7 +26,7 @@ pub use screenshot::{capture_active_window, capture_ide_window, capture_screensh
 pub use script::{Script as ScriptScript, ScriptGenerator, TimelineEntry};
 pub use video_exporter::{VideoAssets, VideoAssetsExporter, VideoScene, VideoSettings};
 pub use watchers::{LogEntry, SessionLogs};
-pub use script_generator::{AIScriptGenerator, ScriptGenerationInput, ScriptEvent, extract_project_context};
+pub use script_generator::{AIScriptGenerator, ScriptGenerationInput, ScriptEvent, extract_project_context, extract_code_files, CodeFile, ScriptScreenshotInfo};
 
 // Include test modules
 #[cfg(test)]
