@@ -32,6 +32,9 @@ use tokio::signal::ctrl_c;
 use tokio::sync::mpsc;
 use tokio::time::interval;
 
+// Global shutdown hook for Windows
+static SHUTDOWN_HOOK: std::sync::Once = std::sync::Once::new();
+
 // ============================================================================
 // Data Structures
 // ============================================================================
@@ -149,7 +152,9 @@ impl ExGSeEngine {
             .map(|home| home.join(".ex-g-se").join("sessions"))
             .unwrap_or_else(|| PathBuf::from(".ex-g-se/sessions"));
 
+        eprintln!("[DEBUG] Sessions directory: {:?}", sessions_dir);
         fs::create_dir_all(&sessions_dir)?;
+        eprintln!("[DEBUG] Directory created/verified");
 
         // Generate timestamped filename
         let timestamp = self.start_time.format("%Y-%m-%d_%H-%M-%S");
@@ -159,6 +164,9 @@ impl ExGSeEngine {
         let filename = format!("{}_{}.json", timestamp, label_part);
         let filepath = sessions_dir.join(&filename);
 
+        eprintln!("[DEBUG] Saving to: {:?}", filepath);
+        eprintln!("[DEBUG] Events count: {}", self.events.len());
+
         let logs = SessionLogs {
             start_time: self.start_time,
             end_time: Some(Utc::now()),
@@ -166,8 +174,19 @@ impl ExGSeEngine {
         };
 
         let json = serde_json::to_string_pretty(&logs)?;
+        eprintln!("[DEBUG] JSON size: {} bytes", json.len());
+
         let mut file = File::create(&filepath)?;
         file.write_all(json.as_bytes())?;
+        file.flush()?; // Ensure data is written to disk
+        file.sync_all()?; // Force OS to flush to disk
+
+        eprintln!("[DEBUG] File written and synced");
+
+        // Verify file exists
+        if !filepath.exists() {
+            return Err(anyhow::anyhow!("File was not created: {:?}", filepath));
+        }
 
         // Show clear success message
         eprintln!("\n{}", "=".repeat(60));
@@ -404,11 +423,26 @@ impl ExGSeEngine {
         eprintln!("[INFO] Press Ctrl+C to stop and save logs");
         eprintln!();
 
-        // Wait for shutdown signal
+        // Wait for shutdown signal with improved error handling
         let ctrl_c_running = self.running.clone();
+        let ctrl_c_tx = tx.clone();
+
         tokio::spawn(async move {
-            if let Ok(()) = ctrl_c().await {
-                ctrl_c_running.store(false, Ordering::Relaxed);
+            match ctrl_c().await {
+                Ok(()) => {
+                    eprintln!("\n[INFO] Shutdown signal received...");
+                    ctrl_c_running.store(false, Ordering::Relaxed);
+                    // Send a dummy event to unblock recv()
+                    let _ = ctrl_c_tx.send(LogEntry {
+                        timestamp: Utc::now(),
+                        event_type: "_shutdown".to_string(),
+                        data: json!({}),
+                    });
+                }
+                Err(e) => {
+                    eprintln!("\n[ERROR] Signal handler error: {:?}", e);
+                    ctrl_c_running.store(false, Ordering::Relaxed);
+                }
             }
         });
 
@@ -417,38 +451,59 @@ impl ExGSeEngine {
         let mut last_stats_time = start_time;
 
         while self.running.load(Ordering::Relaxed) {
-            if let Some(entry) = rx.recv().await {
-                self.events.push(entry);
+            match rx.recv().await {
+                Some(entry) => {
+                    // Filter out shutdown events
+                    if entry.event_type == "_shutdown" {
+                        break;
+                    }
 
-                // Check CLI limits
-                let elapsed_secs = (Utc::now() - start_time).num_seconds();
-                if self.cli_config.should_stop(elapsed_secs, self.events.len()) {
-                    eprintln!("\n[CLI] Limit reached, stopping session...");
-                    self.running.store(false, Ordering::Relaxed);
-                    break;
+                    self.events.push(entry);
+
+                    // Check CLI limits
+                    let elapsed_secs = (Utc::now() - start_time).num_seconds();
+                    if self.cli_config.should_stop(elapsed_secs, self.events.len()) {
+                        eprintln!("\n[CLI] Limit reached, stopping session...");
+                        self.running.store(false, Ordering::Relaxed);
+                        break;
+                    }
+
+                    // Show progress every 30 seconds
+                    if elapsed_secs > 0 && elapsed_secs % 30 == 0 && elapsed_secs != (last_stats_time - start_time).num_seconds() {
+                        last_stats_time = Utc::now();
+                        let clip_count = self.events.iter().filter(|e| e.event_type == "clipboard").count();
+                        let fs_count = self.events.iter().filter(|e| e.event_type == "fs_change").count();
+                        let screenshot_count = self.events.iter().filter(|e| e.event_type == "screenshot").count();
+                        let duration = format_duration(elapsed_secs.try_into().unwrap());
+
+                        eprint!("\r[EX-G-SE] Recording... ({:<15} | Events: {:>4} | FS: {:>3} | Clips: {:>3} | Shots: {:>3})",
+                            duration,
+                            self.events.len(),
+                            fs_count,
+                            clip_count,
+                            screenshot_count
+                        );
+                    }
                 }
-
-                // Show progress every 30 seconds
-                if elapsed_secs > 0 && elapsed_secs % 30 == 0 && elapsed_secs != (last_stats_time - start_time).num_seconds() {
-                    last_stats_time = Utc::now();
-                    let clip_count = self.events.iter().filter(|e| e.event_type == "clipboard").count();
-                    let fs_count = self.events.iter().filter(|e| e.event_type == "fs_change").count();
-                    let screenshot_count = self.events.iter().filter(|e| e.event_type == "screenshot").count();
-                    let duration = format_duration(elapsed_secs.try_into().unwrap());
-
-                    eprint!("\r[EX-G-SE] Recording... ({:<15} | Events: {:>4} | FS: {:>3} | Clips: {:>3} | Shots: {:>3})",
-                        duration,
-                        self.events.len(),
-                        fs_count,
-                        clip_count,
-                        screenshot_count
-                    );
+                None => {
+                    // Channel closed, exit loop
+                    eprintln!("\n[INFO] Event channel closed");
+                    break;
                 }
             }
         }
 
-        // Save logs on shutdown
-        self.save_logs()?;
+        // Save logs on shutdown with error handling
+        eprintln!("\n[INFO] Saving session...");
+        match self.save_logs() {
+            Ok(()) => {
+                // Already shows success message
+            }
+            Err(e) => {
+                eprintln!("\n[ERROR] Failed to save session: {}", e);
+                eprintln!("[ERROR] Session data may be lost!");
+            }
+        }
 
         // Show detailed session summary
         let end_time = Utc::now();

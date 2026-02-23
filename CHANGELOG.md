@@ -5,7 +5,56 @@ All notable changes to EX-G-SE will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [4.0.0] - 2025-02-22
+## [Unreleased]
+
+## [0.4.1] - Planned
+
+### Fixed
+
+- 🐛 **Session save on Windows** - Sessions not saved after recording
+  - Issue: `tokio::signal::ctrl_c()` doesn't unblock `rx.recv().await` on Windows
+  - Fix: Send shutdown event through channel to unblock receiver
+  - Add: `file.sync_all()` to ensure data is flushed to disk
+  - Add: Debug logging to trace save process
+
+### Technical Details
+
+**Root Cause:**
+```rust
+// Before - signal handler sets flag but recv() blocks forever
+tokio::spawn(async move {
+    ctrl_c().await;
+    running.store(false, Ordering::Relaxed);  // Loop still stuck on recv()
+});
+
+while running.load() {
+    rx.recv().await;  // ← BLOCKS even when running=false
+}
+```
+
+**Fix Applied:**
+```rust
+// After - send event to unblock recv()
+tokio::spawn(async move {
+    ctrl_c().await;
+    running.store(false, Ordering::Relaxed);
+    tx.send(LogEntry { event_type: "_shutdown", ... });  // Unblocks recv()
+});
+
+while running.load() {
+    match rx.recv().await {
+        Some(entry) if entry.event_type == "_shutdown" => break,
+        ...
+    }
+}
+```
+
+**Additional Improvements:**
+- Added `file.flush()` and `file.sync_all()` to ensure data persistence on Windows
+- Added debug logging to trace session save process
+- Added error message if save fails
+
+## [0.4.0] - 2025-02-22
 
 ### Added - Core Features
 
