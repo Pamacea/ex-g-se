@@ -6,6 +6,7 @@
 //! - Why certain choices were made
 //! - Technical context and decisions
 //! - Narrative flow of the session
+//! - Claude Code conversation (prompts and responses)
 
 use anyhow::Result;
 use chrono::{DateTime, Utc};
@@ -14,6 +15,7 @@ use serde::Serialize;
 use serde_json::json;
 use std::fs;
 use std::path::PathBuf;
+use crate::claude_context::{PromptEntry, ResponseEntry, ToolCall};
 
 /// Script generation input with enhanced context
 #[derive(Debug, Clone, Serialize)]
@@ -24,6 +26,14 @@ pub struct ScriptGenerationInput {
     pub project_context: ProjectContext,
     pub code_context: Vec<CodeFile>,
     pub screenshots: Vec<ScriptScreenshotInfo>,
+
+    // Claude Code conversation context
+    #[serde(default)]
+    pub user_prompts: Vec<PromptEntry>,
+    #[serde(default)]
+    pub assistant_responses: Vec<ResponseEntry>,
+    #[serde(default)]
+    pub tool_calls: Vec<ToolCall>,
 }
 
 /// Event for script generation
@@ -218,8 +228,32 @@ impl AIScriptGenerator {
             }
         }
 
+        // Claude Code Conversation (NEW!)
+        if !input.user_prompts.is_empty() {
+            prompt.push_str("## Claude Code Conversation\n\n");
+            prompt.push_str("**User Prompts to Claude:**\n\n");
+            for (i, prompt_entry) in input.user_prompts.iter().enumerate() {
+                prompt.push_str(&format!("### Prompt {} - [{}]\n\n", i + 1, prompt_entry.timestamp));
+                prompt.push_str(&format!("{}\n\n", prompt_entry.text));
+            }
+        }
+
+        // Tool Calls Timeline (NEW!)
+        if !input.tool_calls.is_empty() {
+            prompt.push_str("## Tool Calls Timeline\n\n");
+            prompt.push_str("**Actions taken during session:**\n\n");
+            for call in &input.tool_calls {
+                prompt.push_str(&format!("- [{}] **{}**: {}\n",
+                    call.timestamp,
+                    call.tool_name,
+                    call.description
+                ));
+            }
+            prompt.push_str("\n");
+        }
+
         // Timeline
-        prompt.push_str("## Session Timeline\n\n");
+        prompt.push_str("## Session Event Timeline\n\n");
         for (i, event) in input.events.iter().enumerate() {
             prompt.push_str(&format!("### [{}] {}\n\n", event.timestamp, event.event_type));
             prompt.push_str(&format!("{}\n\n", event.description));
@@ -712,4 +746,139 @@ fn detect_language(path: &str) -> String {
     } else {
         "text".to_string()
     }
+}
+
+/// Generate conversation.md with full Claude Code conversation
+pub fn generate_conversation_markdown(input: &ScriptGenerationInput) -> String {
+    let mut md = String::new();
+
+    let duration = (input.session_end - input.session_start).num_seconds();
+    let duration_str = if duration >= 60 {
+        format!("{}m {}s", duration / 60, duration % 60)
+    } else {
+        format!("{}s", duration)
+    };
+
+    // Header
+    md.push_str("# 💬 Claude Code Conversation\n\n");
+    md.push_str("---\n\n");
+    md.push_str(&format!("**Session Started:** {}\n", input.session_start.format("%Y-%m-%d %H:%M:%S UTC")));
+    md.push_str(&format!("**Session Ended:** {}\n", input.session_end.format("%Y-%m-%d %H:%M:%S UTC")));
+    md.push_str(&format!("**Duration:** {}\n", duration_str));
+    md.push_str(&format!("**Total Events:** {}\n\n", input.events.len()));
+
+    // Project context
+    md.push_str("## 📁 Project Context\n\n");
+    if let Some(name) = &input.project_context.name {
+        md.push_str(&format!("**Project:** {}\n", name));
+    }
+    if !input.project_context.tech_stack.is_empty() {
+        md.push_str(&format!("**Tech Stack:** {}\n", input.project_context.tech_stack.join(", ")));
+    }
+    md.push_str("\n---\n\n");
+
+    // User prompts
+    if !input.user_prompts.is_empty() {
+        md.push_str("## 🎯 User Prompts\n\n");
+        md.push_str(&format!("**Total Prompts:** {}\n\n", input.user_prompts.len()));
+
+        for (i, prompt) in input.user_prompts.iter().enumerate() {
+            md.push_str(&format!("### Prompt {} - [{}]\n\n", i + 1, prompt.timestamp));
+            md.push_str(&format!("{}\n\n", prompt.text));
+
+            if let Some(project) = &prompt.project {
+                md.push_str(&format!("*Project: {}*\n\n", project));
+            }
+        }
+
+        md.push_str("---\n\n");
+    }
+
+    // Assistant responses
+    if !input.assistant_responses.is_empty() {
+        md.push_str("## 🤖 Assistant Responses\n\n");
+        md.push_str(&format!("**Total Responses:** {}\n\n", input.assistant_responses.len()));
+
+        for (i, response) in input.assistant_responses.iter().enumerate() {
+            md.push_str(&format!("### Response {} - [{}]\n\n", i + 1, response.timestamp));
+
+            // Truncate very long responses
+            let content = if response.content.len() > 5000 {
+                format!("{}...\n\n*[{} chars total - truncated]*",
+                    response.content.chars().take(5000).collect::<String>(),
+                    response.content.len()
+                )
+            } else {
+                response.content.clone()
+            };
+
+            md.push_str(&format!("{}\n\n", content));
+        }
+
+        md.push_str("---\n\n");
+    }
+
+    // Tool calls timeline
+    if !input.tool_calls.is_empty() {
+        md.push_str("## 🔧 Tool Calls Timeline\n\n");
+        md.push_str(&format!("**Total Tool Calls:** {}\n\n", input.tool_calls.len()));
+
+        // Group by tool type
+        let mut tool_groups: std::collections::HashMap<String, Vec<&ToolCall>> = std::collections::HashMap::new();
+        for call in &input.tool_calls {
+            tool_groups.entry(call.tool_name.clone()).or_default().push(call);
+        }
+
+        for (tool_name, calls) in tool_groups.iter() {
+            md.push_str(&format!("### {} ({} calls)\n\n", tool_name, calls.len()));
+
+            for call in calls {
+                md.push_str(&format!("- **[{}]** {}\n", call.timestamp, call.description));
+            }
+            md.push_str("\n");
+        }
+
+        md.push_str("---\n\n");
+    }
+
+    // File changes
+    if !input.code_context.is_empty() {
+        md.push_str("## 📝 Files Modified\n\n");
+        md.push_str(&format!("**Total Files:** {}\n\n", input.code_context.len()));
+
+        for file in &input.code_context {
+            md.push_str(&format!("### `{}`\n\n", file.path));
+            md.push_str(&format!("**Language:** {}\n", file.language));
+            md.push_str(&format!("**Size:** {} chars\n\n", file.content.len()));
+
+            // Show first 200 chars
+            let preview = if file.content.chars().count() > 200 {
+                let truncated: String = file.content.chars().take(200).collect();
+                format!("{}\n\n...[truncated]", truncated)
+            } else {
+                file.content.clone()
+            };
+
+            md.push_str(&format!("**Preview:**\n```\n{}\n```\n\n", preview));
+        }
+
+        md.push_str("---\n\n");
+    }
+
+    // Session timeline (summary)
+    md.push_str("## 📊 Session Timeline Summary\n\n");
+
+    let mut event_counts: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    for event in &input.events {
+        *event_counts.entry(event.event_type.clone()).or_insert(0) += 1;
+    }
+
+    for (event_type, count) in event_counts.iter() {
+        md.push_str(&format!("- **{}**: {}\n", event_type, count));
+    }
+
+    md.push_str("\n---\n\n");
+    md.push_str("*Generated by EX-G-SE v0.6.0*\n");
+
+    md
 }

@@ -7,6 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-02-23
+
+### ✨ NEW - Claude Code Integration!
+
+- 🎭 **Reads real Claude Code conversations** - Captures prompts and responses from `~/.claude/history.jsonl`
+- 💬 **NEW: conversation.md** - Full conversation export separate from script.md
+- 🔧 **Tool calls tracking** - Captures Read, Edit, Bash, and all tool usage
+- 📝 **Real prompts in script** - AI now uses actual user prompts for better narratives
+- 🎯 **Smart filtering** - Excludes hook errors, keeps everything else
+
+### Features
+
+**Claude Code Context Reader:**
+- Reads `~/.claude/history.jsonl` for global conversation
+- Reads project-specific session files
+- Extracts user prompts with timestamps
+- Extracts assistant responses
+- Extracts tool calls timeline
+- Filters by session time range
+
+**conversation.md Output:**
+- Session metadata (date, duration, events)
+- All user prompts with timestamps
+- All assistant responses (truncated at 5000 chars)
+- Tool calls grouped by type
+- Modified files list with previews
+- Event type summary
+
+**Enhanced script.md:**
+- Includes real Claude Code conversation
+- Tool calls timeline
+- Better context for AI generation
+- Theatrical narrative with actual prompts
+
+### Technical Changes
+
+- New module: `core/src/claude_context.rs` (300+ lines)
+- New structs: `ClaudeHistoryEntry`, `ClaudeSessionEntry`, `PromptEntry`, `ResponseEntry`, `ToolCall`
+- New function: `generate_conversation_markdown()`
+- Updated `ScriptGenerationInput` with `user_prompts`, `assistant_responses`, `tool_calls`
+- Updated AI prompt to include conversation context
+
+### Files Changed
+
+- `core/src/claude_context.rs` (NEW)
+- `core/src/script_generator.rs` (updated)
+- `core/src/lib.rs` (updated exports)
+- `core/src/main.rs` (integration)
+- `CHANGELOG.md` (this file)
+
 ## [0.5.6] - 2026-02-23
 
 ### Fixed - Z.AI API Debugging

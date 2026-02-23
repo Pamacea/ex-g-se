@@ -20,7 +20,11 @@ use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 use serde_json::json;
-use ex_g_se::{capture_screenshot, fs_watcher, CliConfig, AIScriptGenerator, ScriptGenerationInput, ScriptEvent, extract_project_context, extract_code_files, CodeFile, ScriptScreenshotInfo};
+use ex_g_se::{
+    capture_screenshot, fs_watcher, CliConfig, AIScriptGenerator, ScriptGenerationInput,
+    ScriptEvent, extract_project_context, extract_code_files, ScriptScreenshotInfo,
+    ClaudeCodeReader, generate_conversation_markdown
+};
 use std::fs::{self, File};
 use std::io::{self, Write};
 use std::path::PathBuf;
@@ -249,13 +253,45 @@ impl ExGSeEngine {
             })
             .collect();
 
+        // 🆕 Read Claude Code conversation
+        let end_time = Utc::now();
+
+        let (user_prompts, assistant_responses, tool_calls) = if let Ok(reader) = ClaudeCodeReader::new() {
+            // Read global history in time range
+            let history_entries = reader.read_history_in_range(self.start_time, end_time)
+                .unwrap_or_default();
+
+            let user_prompts = reader.extract_user_prompts(&history_entries);
+            let assistant_responses = reader.extract_assistant_responses(&history_entries);
+
+            // Try to read project-specific session
+            let session_id = &uuid::Uuid::new_v4().to_string(); // Placeholder - would need to track actual session
+            let current_dir = std::env::current_dir()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string();
+
+            let session_entries = reader.read_project_session(&current_dir, session_id)
+                .unwrap_or_default();
+            let tool_calls = reader.extract_tool_calls(&session_entries);
+
+            (user_prompts, assistant_responses, tool_calls)
+        } else {
+            (Vec::new(), Vec::new(), Vec::new())
+        };
+
         ScriptGenerationInput {
             session_start: self.start_time,
-            session_end: Utc::now(),
+            session_end: end_time,
             events,
             project_context: extract_project_context(),
             code_context,
             screenshots,
+
+            // 🆕 Claude Code context
+            user_prompts,
+            assistant_responses,
+            tool_calls,
         }
     }
 
@@ -303,6 +339,9 @@ impl ExGSeEngine {
         eprintln!("  Generating script (with AI and code analysis)...");
         let script_input = self.prepare_script_input(&timeline);
 
+        // Clone for conversation.md generation later
+        let script_input_clone = script_input.clone();
+
         let script_content_result = tokio::task::spawn_blocking(move || {
             let rt = tokio::runtime::Runtime::new()?;
             let generator = AIScriptGenerator::new()?;
@@ -332,6 +371,15 @@ impl ExGSeEngine {
         file.write_all(script_content.as_bytes())?;
         file.flush()?;
         eprintln!("  ✓ script.md");
+
+        // 5. 🆕 Generate conversation.md with full Claude Code context
+        eprintln!("  Generating conversation (Claude Code context)...");
+        let conversation = generate_conversation_markdown(&script_input_clone);
+        let conversation_path = output_dir.join("conversation.md");
+        let mut file = File::create(&conversation_path)?;
+        file.write_all(conversation.as_bytes())?;
+        file.flush()?;
+        eprintln!("  ✓ conversation.md");
 
         eprintln!("[INFO] Output files created successfully");
         Ok(())
@@ -635,7 +683,7 @@ impl ExGSeEngine {
 
     /// Main run loop with CLI limits
     async fn run(&mut self) -> Result<()> {
-        eprintln!("EX-G-SE Core Engine v0.5.6 - Ghost Mode");
+        eprintln!("EX-G-SE Core Engine v0.6.0 - Ghost Mode");
         eprintln!("========================================");
         eprintln!("[INFO] Starting shadow logging session...");
 

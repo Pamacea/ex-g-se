@@ -1,4 +1,4 @@
-# EX-G-SE v0.5.3
+# EX-G-SE v0.6.0
 
 > **AI-powered shadow logging observability for development sessions**
 

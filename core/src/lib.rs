@@ -4,6 +4,7 @@
 
 pub mod ai;
 pub mod analyzer;
+pub mod claude_context;
 pub mod cli;
 pub mod core;
 pub mod fs_watcher;
@@ -26,7 +27,8 @@ pub use screenshot::{capture_active_window, capture_ide_window, capture_screensh
 pub use script::{Script as ScriptScript, ScriptGenerator, TimelineEntry};
 pub use video_exporter::{VideoAssets, VideoAssetsExporter, VideoScene, VideoSettings};
 pub use watchers::{LogEntry, SessionLogs};
-pub use script_generator::{AIScriptGenerator, ScriptGenerationInput, ScriptEvent, extract_project_context, extract_code_files, CodeFile, ScriptScreenshotInfo};
+pub use script_generator::{AIScriptGenerator, ScriptGenerationInput, ScriptEvent, extract_project_context, extract_code_files, CodeFile, ScriptScreenshotInfo, generate_conversation_markdown};
+pub use claude_context::{ClaudeCodeReader, PromptEntry, ResponseEntry, ToolCall, ClaudeHistoryEntry, ClaudeSessionEntry};
 
 // Include test modules
 #[cfg(test)]
