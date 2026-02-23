@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.4] - 2026-02-23
+
+### Fixed
+
+- 🐛 **Fixed: exg stats Invalid Date** - Now correctly parses session timestamps
+- 🐛 **Fixed: Event type parsing** - Handles both `type` and `event_type` fields
+- 🐛 **Fixed: Session start/end field names** - Compatible with both old and new formats
+
+### Changed
+
+- **Version:** Rust 4.0.3 → 0.4.4 (NPM version alignment)
+- **Output:** script.md generated with project context
+
 ## [4.0.3] - 2026-02-23
 
 ### Added - Output Files in Project Directory

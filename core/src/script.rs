@@ -7,7 +7,6 @@
 //! - Timeline with screenshots
 
 use anyhow::Result;
-use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
 use crate::analyzer::{KeyMoment, SessionAnalysis};

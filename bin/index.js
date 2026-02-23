@@ -312,8 +312,13 @@ function showSessionStats(sessionId) {
   }
 
   const session = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-  const startTime = new Date(session.start_time);
-  const endTime = new Date(session.end_time);
+
+  // Handle both old (start_time) and new (start) field names
+  const startStr = session.start_time || session.start;
+  const endStr = session.end_time || session.end;
+
+  const startTime = new Date(startStr);
+  const endTime = new Date(endStr);
   const duration = (endTime - startTime) / 1000;
 
   console.log(chalk.bold('\n📊 Session Statistics\n'));
@@ -329,10 +334,11 @@ function showSessionStats(sessionId) {
   const events = session.events || [];
   console.log(`\n  ${chalk.gray('Total Events:')} ${events.length}`);
 
-  // Breakdown by type
+  // Breakdown by type (handle both type and event_type)
   const breakdown = {};
   events.forEach(e => {
-    breakdown[e.type] = (breakdown[e.type] || 0) + 1;
+    const type = e.type || e.event_type || 'unknown';
+    breakdown[type] = (breakdown[type] || 0) + 1;
   });
 
   console.log(`\n  ${chalk.bold('Event Breakdown:')}`);

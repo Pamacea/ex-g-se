@@ -8,6 +8,7 @@ pub mod cli;
 pub mod core;
 pub mod fs_watcher;
 pub mod script;
+pub mod script_generator;
 pub mod screenshot;
 pub mod video_exporter;
 pub mod watchers;
@@ -25,6 +26,7 @@ pub use screenshot::{capture_active_window, capture_ide_window, capture_screensh
 pub use script::{Script as ScriptScript, ScriptGenerator, TimelineEntry};
 pub use video_exporter::{VideoAssets, VideoAssetsExporter, VideoScene, VideoSettings};
 pub use watchers::{LogEntry, SessionLogs};
+pub use script_generator::{AIScriptGenerator, ScriptGenerationInput, ScriptEvent, extract_project_context};
 
 // Include test modules
 #[cfg(test)]
