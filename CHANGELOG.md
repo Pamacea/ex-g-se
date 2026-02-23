@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-02-23
+
+### Fixed - Script.md Always Created
+
+- 🔧 **Script.md now always created** - Even when AI generation fails
+- 📝 **Error details in script** - Shows error message when API fails
+- 💡 **Helpful troubleshooting** - Includes configuration and next steps
+- ✅ **Session data preserved** - timeline.json and summary.md always available
+
+### Improvement
+
+When AI script generation fails, script.md now contains:
+- Error message and details
+- Your current configuration
+- Session statistics
+- Troubleshooting steps
+- Link to check API credentials
+
 ## [0.5.1] - 2026-02-23
 
 ### Fixed - NPM Package Installation

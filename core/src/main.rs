@@ -303,7 +303,7 @@ impl ExGSeEngine {
         eprintln!("  Generating script (with AI and code analysis)...");
         let script_input = self.prepare_script_input(&timeline);
 
-        let script_content = tokio::task::spawn_blocking(move || {
+        let script_content_result = tokio::task::spawn_blocking(move || {
             let rt = tokio::runtime::Runtime::new()?;
             let generator = AIScriptGenerator::new()?;
 
@@ -311,7 +311,21 @@ impl ExGSeEngine {
                 generator.generate(&script_input).await
             })
         })
-        .await??;
+        .await;
+
+        // Always create script.md, even if AI fails
+        let event_count = self.events.len();
+        let script_content = match script_content_result {
+            Ok(Ok(content)) => content,
+            Ok(Err(e)) => {
+                // AI generation failed, create error script
+                format!("# 🎭 Script Generation Failed\n\n**Error:** {}\n\n## What Happened\n\nThe AI script generation encountered an error. This could be due to:\n\n- Invalid API key or credentials\n- API endpoint not reachable\n- Rate limiting or quota exceeded\n- Model name incorrect\n\n## Your Configuration\n\n- **Provider:** z.ai\n- **Model:** zai-latest\n- **API URL:** https://api.z.ai/v1\n\n## Session Data Still Available\n\nYour session was saved successfully!\n\n- **Events captured:** {}\n- **Files modified:** Check timeline.json for details\n- **Timeline:** See timeline.json and summary.md\n\n## Next Steps\n\n1. Check your API key at https://cloud.z-ip.ai\n2. Verify the model name is correct\n3. Try again with `exg record`\n\n---\n*Session data preserved in .ex-g-se/ directory*\n", e, event_count)
+            }
+            Err(e) => {
+                // Thread spawn failed, create error script
+                format!("# 🎭 Script Generation Failed\n\n**Error:** Thread spawn failed: {}\n\n## What Happened\n\nThe system failed to spawn the AI generation thread. This is a system issue.\n\n## Session Data Still Available\n\nYour session was saved successfully!\n\n- **Events captured:** {}\n- **Files modified:** Check timeline.json for details\n- **Timeline:** See timeline.json and summary.md\n\n---\n*Session data preserved in .ex-g-se/ directory*\n", e, event_count)
+            }
+        };
 
         let script_path = output_dir.join("script.md");
         let mut file = File::create(&script_path)?;
