@@ -1,6 +1,6 @@
 {
   "name": "@oalacea/ex-g-se",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "description": "AI-powered shadow logging observability tool for Oalacea",
   "main": "cli/index.js",
   "bin": {
@@ -11,7 +11,7 @@
     "bin/*"
   ],
   "scripts": {
-    "postinstall": "node -e \"console.log('EX-G-SE v4.0.0 installed successfully!')\"",
+    "postinstall": "node -e \"console.log('EX-G-SE v4.0.1 installed successfully!')\"",
     "dev": "bash scripts/dev.sh",
     "build": "bash scripts/build-all.sh",
     "build:rust": "cd core && cargo build --release",
@@ -40,5 +40,5 @@
   },
   "engines": {
     "node": ">=18.0.0"
-  },
+  }
 }
