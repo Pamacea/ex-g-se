@@ -417,14 +417,17 @@ impl AIScriptGenerator {
     /// Call ZAI API
     async fn call_zai(&self, prompt: &str) -> Result<String> {
         // ZAI uses OpenAI-compatible format
-        self.call_openai_with_url(
-            prompt,
-            &if self.config.api_url.is_empty() {
-                "https://api.zai.ai/v1/chat/completions".to_string()
-            } else {
-                format!("{}/chat/completions", self.config.api_url)
-            }
-        ).await
+        // Config URL should already include /v1, just append /chat/completions
+        let base_url = if self.config.api_url.is_empty() {
+            "https://api.z.ai/v1".to_string()
+        } else {
+            // Auto-fix common mistake: .v1 -> /v1
+            let url = self.config.api_url.trim_end_matches('/');
+            url.replace(".v1", "/v1")
+        };
+
+        let full_url = format!("{}/chat/completions", base_url);
+        self.call_openai_with_url(prompt, &full_url).await
     }
 
     /// Call OpenAI-compatible API with custom URL

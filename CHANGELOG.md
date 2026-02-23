@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.7] - 2026-02-23
+
+### Fixed - Z.AI URL Format
+
+- 🔧 **Auto-fix URL typo** - Automatically corrects `.v1` to `/v1` in z.ai URLs
+- ✅ **AI script generation works** - Proper URL format for API calls
+
+### Bug Fix
+
+Common mistake: Users often enter `https://api.z.ai.v1` instead of `https://api.z.ai/v1`.
+The Rust code now auto-corrects this by replacing `.v1` with `/v1`.
+
 ## [0.4.6] - 2026-02-23
 
 ### Fixed - AI Config Not Loading
