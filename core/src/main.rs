@@ -9,8 +9,8 @@
 // PLATFORMS: macOS (Apple Silicon), Windows (x64)
 //
 // Usage:
-//   exg                  Start recording (Ctrl+Shift+X to stop)
-//   exg-config           Configure AI provider
+//   exg record                 Start recording (Ctrl+Shift+X to stop)
+//   exg config           Configure AI provider
 //
 // Or via npx:
 //   npx @oalacea/ex-g-se
@@ -18,22 +18,18 @@
 
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use rdev::{Event, EventType, Key};
 use serde::Serialize;
 use serde_json::json;
 use ex_g_se::{capture_screenshot, fs_watcher, CliConfig};
 use std::fs::{self, File};
 use std::io::{self, Write};
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, mpsc as std_mpsc};
+use std::sync::mpsc as std_mpsc;
 use std::time::Duration;
-use tokio::signal::ctrl_c;
 use tokio::sync::mpsc;
 use tokio::time::interval;
-
-// Global shutdown hook for Windows
-static SHUTDOWN_HOOK: std::sync::Once = std::sync::Once::new();
 
 // ============================================================================
 // Data Structures
@@ -70,10 +66,8 @@ struct ExGSeEngine {
     events: Vec<LogEntry>,
     start_time: DateTime<Utc>,
     running: Arc<AtomicBool>,
-    trigger_keys: Vec<Key>,
     screenshot_interval_secs: u64,
     cli_config: CliConfig,
-    // Better file filtering
     ignore_patterns: Vec<String>,
 }
 
@@ -99,11 +93,8 @@ impl ExGSeEngine {
             events: Vec::new(),
             start_time: Utc::now(),
             running: Arc::new(AtomicBool::new(true)),
-            // Trigger: Ctrl+Shift+X
-            trigger_keys: vec![Key::ControlLeft, Key::ShiftLeft, Key::KeyX],
             screenshot_interval_secs: 30,
             cli_config,
-            // Better file filtering
             ignore_patterns: vec![
                 "node_modules".to_string(),
                 ".git".to_string(),
@@ -152,9 +143,7 @@ impl ExGSeEngine {
             .map(|home| home.join(".ex-g-se").join("sessions"))
             .unwrap_or_else(|| PathBuf::from(".ex-g-se/sessions"));
 
-        eprintln!("[DEBUG] Sessions directory: {:?}", sessions_dir);
         fs::create_dir_all(&sessions_dir)?;
-        eprintln!("[DEBUG] Directory created/verified");
 
         // Generate timestamped filename
         let timestamp = self.start_time.format("%Y-%m-%d_%H-%M-%S");
@@ -164,9 +153,6 @@ impl ExGSeEngine {
         let filename = format!("{}_{}.json", timestamp, label_part);
         let filepath = sessions_dir.join(&filename);
 
-        eprintln!("[DEBUG] Saving to: {:?}", filepath);
-        eprintln!("[DEBUG] Events count: {}", self.events.len());
-
         let logs = SessionLogs {
             start_time: self.start_time,
             end_time: Some(Utc::now()),
@@ -174,14 +160,10 @@ impl ExGSeEngine {
         };
 
         let json = serde_json::to_string_pretty(&logs)?;
-        eprintln!("[DEBUG] JSON size: {} bytes", json.len());
-
         let mut file = File::create(&filepath)?;
         file.write_all(json.as_bytes())?;
-        file.flush()?; // Ensure data is written to disk
-        file.sync_all()?; // Force OS to flush to disk
-
-        eprintln!("[DEBUG] File written and synced");
+        file.flush()?;
+        file.sync_all()?;
 
         // Verify file exists
         if !filepath.exists() {
@@ -359,105 +341,42 @@ impl ExGSeEngine {
         Ok(())
     }
 
-    /// Global keyboard trigger listener
-    async fn watch_keyboard(&self) -> Result<()> {
-        let running = self.running.clone();
-        let trigger_keys = self.trigger_keys.clone();
-
-        tokio::task::spawn_blocking(move || {
-            let mut pressed_keys: Vec<Key> = Vec::new();
-
-            eprintln!("[HOOK] Keyboard hook active - Press Ctrl+Shift+X to trigger");
-
-            let callback = move |event: Event| {
-                // Check if we should stop
-                if !running.load(Ordering::Relaxed) {
-                    std::process::exit(0);
-                }
-
-                match event.event_type {
-                    EventType::KeyPress(key) => {
-                        // Add key if not already pressed
-                        if !pressed_keys.contains(&key) {
-                            pressed_keys.push(key);
-
-                            // Check if all trigger keys are pressed
-                            if trigger_keys.iter().all(|k| pressed_keys.contains(k)) {
-                                eprintln!("\n[TRIG] Manual trigger activated!");
-                                // Note: For proper event logging, we'd need a channel that works
-                                // from blocking contexts. For now, just print the message.
-                            }
-                        }
-                    }
-                    EventType::KeyRelease(key) => {
-                        // Remove the released key
-                        pressed_keys.retain(|k| *k != key);
-                    }
-                    _ => {}
-                }
-            };
-
-            if let Err(e) = rdev::listen(callback) {
-                eprintln!("Keyboard hook error: {:?}", e);
-            }
-        });
-
-        Ok(())
-    }
-
     /// Main run loop with CLI limits
     async fn run(&mut self) -> Result<()> {
-        eprintln!("EX-G-SE Core Engine v4.0.0 - Ghost Mode");
+        eprintln!("EX-G-SE Core Engine v4.0.1 - Ghost Mode");
         eprintln!("========================================");
         eprintln!("[INFO] Starting shadow logging session...");
 
         let (tx, mut rx) = mpsc::unbounded_channel();
 
-        // Start all watchers
+        // Start all watchers (NO keyboard hook - simple ENTER to stop)
         self.watch_fs(tx.clone()).await?;
         self.watch_clipboard(tx.clone()).await?;
         self.capture_screenshots(tx.clone()).await?;
-        self.watch_keyboard().await?;
 
         eprintln!("[INFO] All monitors active - monitoring current directory");
-        eprintln!("[INFO] Press Ctrl+C to stop and save logs");
+        eprintln!("[INFO] ⏎  Press ENTER to stop and save");
         eprintln!();
 
-        // Wait for shutdown signal with improved error handling
-        let ctrl_c_running = self.running.clone();
-        let ctrl_c_tx = tx.clone();
-
-        tokio::spawn(async move {
-            match ctrl_c().await {
-                Ok(()) => {
-                    eprintln!("\n[INFO] Shutdown signal received...");
-                    ctrl_c_running.store(false, Ordering::Relaxed);
-                    // Send a dummy event to unblock recv()
-                    let _ = ctrl_c_tx.send(LogEntry {
-                        timestamp: Utc::now(),
-                        event_type: "_shutdown".to_string(),
-                        data: json!({}),
-                    });
-                }
-                Err(e) => {
-                    eprintln!("\n[ERROR] Signal handler error: {:?}", e);
-                    ctrl_c_running.store(false, Ordering::Relaxed);
-                }
-            }
+        // Spawn a thread to listen for ENTER key
+        let running = self.running.clone();
+        std::thread::spawn(move || {
+            let mut input = String::new();
+            let _ = io::stdin().read_line(&mut input);
+            eprintln!("\n[INFO] Stopping session...");
+            running.store(false, Ordering::Relaxed);
         });
 
         // Collect events with CLI limits
         let start_time = Utc::now();
         let mut last_stats_time = start_time;
 
-        while self.running.load(Ordering::Relaxed) {
-            match rx.recv().await {
-                Some(entry) => {
-                    // Filter out shutdown events
-                    if entry.event_type == "_shutdown" {
-                        break;
-                    }
+        // Give ENTER listener time to start
+        tokio::time::sleep(Duration::from_millis(100)).await;
 
+        while self.running.load(Ordering::Relaxed) {
+            match tokio::time::timeout(Duration::from_millis(100), rx.recv()).await {
+                Ok(Some(entry)) => {
                     self.events.push(entry);
 
                     // Check CLI limits
@@ -485,23 +404,30 @@ impl ExGSeEngine {
                         );
                     }
                 }
-                None => {
-                    // Channel closed, exit loop
-                    eprintln!("\n[INFO] Event channel closed");
+                Ok(None) => {
+                    // Channel closed
                     break;
+                }
+                Err(_) => {
+                    // Timeout - check running flag
+                    if !self.running.load(Ordering::Relaxed) {
+                        break;
+                    }
                 }
             }
         }
 
-        // Save logs on shutdown with error handling
+        // Small delay to ensure all events are collected
+        tokio::time::sleep(Duration::from_millis(200)).await;
+
+        // Save logs on shutdown
         eprintln!("\n[INFO] Saving session...");
         match self.save_logs() {
             Ok(()) => {
-                // Already shows success message
+                // Success message already shown
             }
             Err(e) => {
                 eprintln!("\n[ERROR] Failed to save session: {}", e);
-                eprintln!("[ERROR] Session data may be lost!");
             }
         }
 
@@ -519,11 +445,7 @@ impl ExGSeEngine {
         eprintln!("   📂 File Changes: {}", fs_count);
         eprintln!("   🖼️  Screenshots: {}", screenshot_count);
         eprintln!("\n{}", "=".repeat(60));
-        eprintln!("\n⏸️  Press ENTER to exit...");
-
-        // Wait for user to press Enter
-        let mut input = String::new();
-        io::stdin().read_line(&mut input)?;
+        eprintln!("\n✅ Done!");
 
         Ok(())
     }
