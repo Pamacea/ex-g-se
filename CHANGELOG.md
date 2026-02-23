@@ -3,9 +3,25 @@
 All notable changes to EX-G-SE will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+and this project adheres to [Semantic Versioning](https://semver.com/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.6.1] - 2026-02-23
+
+### Improved - Better Context & Previews
+
+- 📄 **conversation.md as AI context** - Script now uses full conversation as prompt context
+- 📝 **Larger file previews** - Increased from 200 to 3000 chars in conversation.md
+- 🎯 **Better script generation** - AI now has complete conversation history to work with
+- 🔧 **Cleaner prompt structure** - Removed redundant code, simplified flow
+
+### Technical Changes
+
+- `build_detailed_prompt()` now generates conversation first and uses it as context
+- File previews in conversation.md: up to 3000 chars (was 200)
+- Removed orphaned code that was causing build errors
+- Script prompt is now much cleaner and more focused
 
 ## [0.6.0] - 2026-02-23
 

@@ -683,7 +683,7 @@ impl ExGSeEngine {
 
     /// Main run loop with CLI limits
     async fn run(&mut self) -> Result<()> {
-        eprintln!("EX-G-SE Core Engine v0.6.0 - Ghost Mode");
+        eprintln!("EX-G-SE Core Engine v0.6.1 - Ghost Mode");
         eprintln!("========================================");
         eprintln!("[INFO] Starting shadow logging session...");
 

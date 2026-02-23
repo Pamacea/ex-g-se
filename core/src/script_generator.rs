@@ -173,121 +173,40 @@ impl AIScriptGenerator {
 
     /// Build detailed prompt for AI with code and screenshot analysis
     fn build_detailed_prompt(&self, input: &ScriptGenerationInput) -> String {
-        let duration = (input.session_end - input.session_start).num_seconds();
+        // 🆕 Generate conversation first and use it as context
+        let conversation_md = generate_conversation_markdown(input);
 
         let mut prompt = String::new();
 
-        prompt.push_str("# Development Session Analysis Request\n\n");
-        prompt.push_str(&format!("Duration: {} seconds\n", duration));
-        prompt.push_str(&format!("Events: {}\n\n", input.events.len()));
+        // Use conversation as the primary context
+        prompt.push_str("# Development Session Script Generation\n\n");
+        prompt.push_str("Below is the complete conversation and context from a development session.\n\n");
+        prompt.push_str("---\n\n");
+        prompt.push_str(&conversation_md);
+        prompt.push_str("\n---\n\n");
 
-        // Project context with CLAUDE.md
-        prompt.push_str("## Project Context\n\n");
-        if let Some(name) = &input.project_context.name {
-            prompt.push_str(&format!("Project: {}\n", name));
-        }
-        if let Some(desc) = &input.project_context.description {
-            prompt.push_str(&format!("Description: {}\n", desc));
-        }
-        prompt.push_str(&format!("Tech Stack: {}\n", input.project_context.tech_stack.join(", ")));
+        // Add the script generation request
+        prompt.push_str("\n## Task: Generate Theatrical Script\n\n");
+        prompt.push_str("Based on the conversation and context above, generate an engaging **theatrical script** that tells the story of this development session.\n\n");
 
-        if let Some(claude_ctx) = &input.project_context.claude_md_context {
-            prompt.push_str("\n### Project Configuration (CLAUDE.md)\n\n");
-            prompt.push_str(claude_ctx);
-            prompt.push_str("\n");
-        }
-
-        // Code changes with content
-        if !input.code_context.is_empty() {
-            prompt.push_str("\n## Code Changes Analysis\n\n");
-            prompt.push_str("### Modified Files (with content):\n\n");
-            for code_file in &input.code_context {
-                prompt.push_str(&format!("#### {}\n\n", code_file.path));
-                prompt.push_str(&format!("**Language:** {}\n\n", code_file.language));
-
-                // Include first 500 chars of code (using char boundaries)
-                let preview = if code_file.content.chars().count() > 500 {
-                    let truncated: String = code_file.content.chars().take(500).collect();
-                    format!("{}...\n\n[{} chars total]\n", truncated, code_file.content.chars().count())
-                } else {
-                    format!("{}\n\n", code_file.content)
-                };
-                prompt.push_str(&format!("```{}\n{}\n```\n\n",
-                    code_file.language, preview));
-            }
-        }
-
-        // Screenshots
-        if !input.screenshots.is_empty() {
-            prompt.push_str("## Screenshots\n\n");
-            for (i, shot) in input.screenshots.iter().enumerate() {
-                prompt.push_str(&format!("### Screenshot {} - {}\n\n", i + 1, shot.timestamp));
-                prompt.push_str(&format!("File: {}\n\n", shot.path));
-                // Note: In v0.4.6 we can add OCR here
-                prompt.push_str("(Visual screenshot captured)\n\n");
-            }
-        }
-
-        // Claude Code Conversation (NEW!)
-        if !input.user_prompts.is_empty() {
-            prompt.push_str("## Claude Code Conversation\n\n");
-            prompt.push_str("**User Prompts to Claude:**\n\n");
-            for (i, prompt_entry) in input.user_prompts.iter().enumerate() {
-                prompt.push_str(&format!("### Prompt {} - [{}]\n\n", i + 1, prompt_entry.timestamp));
-                prompt.push_str(&format!("{}\n\n", prompt_entry.text));
-            }
-        }
-
-        // Tool Calls Timeline (NEW!)
-        if !input.tool_calls.is_empty() {
-            prompt.push_str("## Tool Calls Timeline\n\n");
-            prompt.push_str("**Actions taken during session:**\n\n");
-            for call in &input.tool_calls {
-                prompt.push_str(&format!("- [{}] **{}**: {}\n",
-                    call.timestamp,
-                    call.tool_name,
-                    call.description
-                ));
-            }
-            prompt.push_str("\n");
-        }
-
-        // Timeline
-        prompt.push_str("## Session Event Timeline\n\n");
-        for (i, event) in input.events.iter().enumerate() {
-            prompt.push_str(&format!("### [{}] {}\n\n", event.timestamp, event.event_type));
-            prompt.push_str(&format!("{}\n\n", event.description));
-
-            if event.event_type == "clipboard" {
-                if let Some(content) = event.details.get("content") {
-                    if let Some(text) = content.as_str() {
-                        if text.len() < 800 {
-                            prompt.push_str(&format!("**Clipboard:** `{}`\n\n", text));
-                        } else {
-                            prompt.push_str(&format!("**Clipboard:** [{} chars, truncated]\n\n", text.len()));
-                        }
-                    }
-                }
-            }
-        }
-
-        // Request
-        prompt.push_str("\n## Task\n\n");
-        prompt.push_str("Generate a **theatrical script** in Markdown that tells the story of this development session.\n\n");
         prompt.push_str("### Requirements:\n\n");
         prompt.push_str("1. **Structure:** Use Acts and Scenes (theatrical format)\n");
-        prompt.push_str("2. **Narrative:** Tell the STORY of what happened\n");
-        prompt.push_str("3. **Thoughts:** Capture the developer's INTENTIONS and REASONING\n");
-        prompt.push_str("4. **Technical:** Explain WHY choices were made\n");
-        prompt.push_str("5. **Visual:** Describe what's visible in screenshots\n");
-        prompt.push_str("6. **Context:** Use the project info and code to understand the domain\n\n");
+        prompt.push_str("2. **Narrative:** Tell the STORY of what happened during the session\n");
+        prompt.push_str("3. **Real Prompts:** Quote the ACTUAL user prompts from the conversation\n");
+        prompt.push_str("4. **Thoughts:** Capture the developer's INTENTIONS and REASONING\n");
+        prompt.push_str("5. **Technical:** Explain WHY choices were made based on the files modified\n");
+        prompt.push_str("6. **Visual:** Describe what's visible in screenshots\n");
+        prompt.push_str("7. **Context:** Use the project info and code changes to understand the domain\n\n");
+
         prompt.push_str("### Format:\n\n");
-        prompt.push_str("# [Engaging Title]\n\n");
+        prompt.push_str("# [Engaging Title that captures the essence]\n\n");
         prompt.push_str("## Act 1 - [The Purpose/Goal]\n\n");
         prompt.push_str("*Setting the scene: What is the developer trying to accomplish?*\n\n");
         prompt.push_str("### Scene 1 - [HH:MM:SS] - [Brief Moment Title]\n\n");
         prompt.push_str("**[Stage Direction]**\n\n");
         prompt.push_str("The developer [action]. [Technical detail].\n\n");
+        prompt.push_str("**User's Prompt to Claude:**\n\n");
+        prompt.push_str("> [Actual prompt text from conversation]\n\n");
         prompt.push_str("**Developer's Thoughts:**\n\n");
         prompt.push_str("> [Internal monologue - what they're thinking and why]\n\n");
         prompt.push_str("**Technical Context:**\n\n");
@@ -295,11 +214,12 @@ impl AIScriptGenerator {
         prompt.push_str("---\n\n");
 
         prompt.push_str("**IMPORTANT:**\n");
-        prompt.push_str("- Be SPECIFIC about technical decisions\n");
-        prompt.push_str("- Show DEVELOPER'S THOUGHT PROCESS\n");
-        prompt.push_str("- Reference actual code and project context\n");
+        prompt.push_str("- Use the REAL user prompts from the conversation section\n");
+        prompt.push_str("- Reference the ACTUAL files that were modified\n");
+        prompt.push_str("- Show DEVELOPER'S THOUGHT PROCESS based on their requests\n");
         prompt.push_str("- Make it ENGAGING like a story\n");
-        prompt.push_str("- Use timestamps for scene headers\n");
+        prompt.push_str("- Connect the prompts to the code changes\n");
+        prompt.push_str("- Explain the WHY behind each action\n");
 
         prompt
     }
@@ -846,20 +766,21 @@ pub fn generate_conversation_markdown(input: &ScriptGenerationInput) -> String {
         md.push_str("## 📝 Files Modified\n\n");
         md.push_str(&format!("**Total Files:** {}\n\n", input.code_context.len()));
 
+        // Show full content for small files, preview for large files
         for file in &input.code_context {
             md.push_str(&format!("### `{}`\n\n", file.path));
             md.push_str(&format!("**Language:** {}\n", file.language));
             md.push_str(&format!("**Size:** {} chars\n\n", file.content.len()));
 
-            // Show first 200 chars
-            let preview = if file.content.chars().count() > 200 {
-                let truncated: String = file.content.chars().take(200).collect();
-                format!("{}\n\n...[truncated]", truncated)
+            // Show more content - up to 3000 chars or full file if small
+            let preview = if file.content.chars().count() > 3000 {
+                let truncated: String = file.content.chars().take(3000).collect();
+                format!("{}\n\n...[{} more chars, truncated]\n", truncated, file.content.chars().count() - 3000)
             } else {
                 file.content.clone()
             };
 
-            md.push_str(&format!("**Preview:**\n```\n{}\n```\n\n", preview));
+            md.push_str(&format!("**Content:**\n```\n{}\n```\n\n", preview));
         }
 
         md.push_str("---\n\n");
