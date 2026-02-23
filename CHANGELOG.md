@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.8] - 2026-02-23
+
+### Fixed - Better API Error Handling
+
+- 🔧 **Improved error messages** - Shows actual API error response
+- 🔍 **Debug information** - Includes status code and error body
+- 💡 **Helpful tips** - Suggests checking API key and model
+
+### Debug Feature
+
+When API calls fail, the script.md will now include:
+- HTTP status code
+- Error response body
+- Link to check API credentials
+
 ## [0.4.7] - 2026-02-23
 
 ### Fixed - Z.AI URL Format

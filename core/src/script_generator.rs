@@ -462,6 +462,17 @@ impl AIScriptGenerator {
             .send()
             .await?;
 
+        // Check status code
+        let status = response.status();
+        if !status.is_success() {
+            let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+            return Ok(format!("**Error:** API returned status {} - {}\n\n**Response:**\n{}\n\n**Tip:** Check your API key and model name at https://cloud.z-ip.ai",
+                status.as_u16(),
+                status.canonical_reason().unwrap_or("Unknown"),
+                error_text
+            ));
+        }
+
         let result: serde_json::Value = response.json().await?;
 
         Ok(result["choices"][0]["message"]["content"]
