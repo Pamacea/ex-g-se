@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.com/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.3] - 2026-02-24
+
+### Added - Custom Style Guide System
+
+- 🎨 **Custom style guide support** - `exg config style` to configure your DA artistique
+- 📝 **EXG.md storage** - Style guide saved in `~/.config/ex-g-se/EXG.md`
+- 🤖 **Auto-injection** - Style automatically applied to all AI-generated content
+- 📄 **EXG.md.example** - Template provided for easy customization
+- 🎯 **Platform-specific guidance** - Style applied to LinkedIn, Twitter, Bluesky, Dev.to, Mastodon, Blog
+
+### Enhanced - Two-Part Script Generation
+
+- 🎭 **Part 1: Theatrical Script** - For video content (existing functionality)
+- 📱 **Part 2: Social Media Posts** - Generates posts for 6 platforms:
+  * LinkedIn (professional, 3-5 paragraphs)
+  * Twitter/X thread (concise, 2-3 tweets)
+  * Bluesky (developer community, authentic)
+  * Dev.to/Hashnode (tutorial style, educational)
+  * Mastodon (open source, transparent)
+  * Personal blog (reflective, detailed)
+
+### Fixed - Syntax Error in Style Config
+
+- 🔧 **Fixed missing parenthesis** - Syntax error in config.js style command
+- ✅ **Simplified input method** - Single-line/prompt input instead of multi-line
+- 🎯 **Better UX** - Clear instructions and examples
+
+### Documentation
+
+- 📚 Added Windows PowerShell environment variable examples in GUIDE.md
+- 📚 Created EXG.md.example template
+- 📚 Updated all documentation for v0.6.3
+
 ## [0.6.2] - 2026-02-24
 
 ### Fixed - Critical Bug Fixes & Provider System Overhaul
