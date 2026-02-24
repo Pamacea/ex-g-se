@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.com/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-02-24
+
+### Fixed - Critical Bug Fixes & Provider System Overhaul
+
+- 🔧 **Simplified AI provider system** - Reduced from 4 functions to 2 (50% code reduction)
+- ✅ **Fixed z.ai provider name** - Now recognizes both "z.ai" and "zai" variants
+- 🔐 **Fixed API key validation** - Keys with dots (like Z.AI keys) no longer truncated
+- 📝 **Improved password prompt** - Fixed copy-paste issues with native readline masking
+- ⌨️ **Fixed Press ENTER to exit** - Proper stdin forwarding on Windows with spawn()
+- 🖼️ **Fixed Windows screenshots** - Fixed negative height handling in image buffer creation
+- 🐛 **Enhanced AI debugging** - Shows provider, URL, model, status code, and response body
+- ✅ **Validated working** - Successfully tested with Z.AI glm-4.7-flash (free model)
+
+### Technical Changes
+
+**AI Provider System:**
+- Unified `call_openai_compatible()` function handles OpenAI, Z.AI, Together, Groq, and any OpenAI-compatible provider
+- Removed duplicate `call_openai()`, `call_zai()`, and `call_openai_with_url()` functions (143 lines removed)
+- Provider-specific model defaults (glm-5 for Z.AI, gpt-4o for OpenAI, etc.)
+- Provider-specific extras (Z.AI gets "thinking" parameter automatically)
+- Smart URL handling (accepts both base URLs and full URLs)
+
+**Validation & UX:**
+- Fixed API key validation to check for dot separator instead of strict length
+- Added helpful warnings when Z.AI keys don't contain expected format
+- Better error messages show exact status codes and API responses
+- Password prompt now uses native `hideEchoBack` instead of raw mode
+
+**Windows Fixes:**
+- Fixed stdin forwarding by using `spawn()` instead of `execSync()`
+- Added `shell: true` option for proper Windows path handling
+- Fixed screenshot capture to use absolute values for width/height
+
+**Code Reduction:**
+- script_generator.rs: 867 → 724 lines (143 lines removed, ~16% reduction)
+- Functions: 4 → 2 (50% reduction)
+- All functionality preserved with simpler architecture
+
+### Breaking Changes
+
+None. All changes are backward compatible.
+
+### Migration Notes
+
+No migration needed. If you had issues with Z.AI keys being truncated:
+- Run `exg config` again to recreate your configuration
+- The improved password prompt will handle copy-paste correctly
+- Your API key will be stored completely (including the part after the dot)
+
 ## [0.6.1] - 2026-02-23
 
 ### Improved - Better Context & Previews

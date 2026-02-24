@@ -14,7 +14,7 @@
  *   exg update          Update to latest version
  */
 
-const { execSync } = require('child_process');
+const { execSync, spawn } = require('child_process');
 const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
@@ -100,6 +100,19 @@ async function loadConfig() {
       const masterPassword = await promptPassword('🔐 Mot de passe maître: ');
       const decrypted = decrypt(encrypted, masterPassword);
       const config = JSON.parse(decrypted);
+
+      // Validate API key integrity (especially for Z.AI)
+      if ((config.provider === 'z.ai' || config.provider === 'zai') && config.api_key) {
+        // Z.AI keys vary in length (45-55 chars), check if it has the dot separator
+        if (!config.api_key.includes('.')) {
+          console.error(chalk.red('\n⚠️  API key Z.AI invalide (manque le point de séparation) !'));
+          console.error(chalk.gray(`   Format attendu: part1.part2`));
+          console.error(chalk.gray(`   Longueur actuelle: ${config.api_key.length} caractères`));
+          console.error(chalk.yellow('\n💡 Solution: Refaites "exg config" et colle la clé complète\n'));
+          process.exit(1);
+        }
+      }
+
       return config;
     } catch (error) {
       if (error.message.includes('Unsupported state')) {
@@ -558,13 +571,14 @@ function formatBytes(bytes) {
 // ============================================================================
 
 function showHelp() {
-  console.log(chalk.bold('\nEX-G-SE v0.6.1 - Ghost Mode Observability\n'));
+  console.log(chalk.bold('\nEX-G-SE v0.6.2 - Ghost Mode Observability\n'));
   console.log(chalk.cyan('Commands:\n'));
   console.log('  exg, exg --help, exg -h   Show this help message');
   console.log('  exg version, exg --version, exg -v  Show version information');
   console.log('  exg config              Configure AI provider');
   console.log('  exg config list         Show current configuration');
   console.log('  exg config test         Test API connection');
+  console.log('  exg config style        Configure style guide for scripts');
   console.log('  exg record              Start recording session');
   console.log('  exg record --label      Record with custom label');
   console.log('  exg record --duration   Auto-stop after N minutes');
@@ -618,6 +632,13 @@ async function main() {
 
     if (subCommand === 'test') {
       await validateConfig();
+      return;
+    }
+
+    if (subCommand === 'style') {
+      // Run style config wizard
+      const configPath = path.join(__dirname, 'config.js');
+      execSync(`node "${configPath}" style`, { stdio: 'inherit' });
       return;
     }
 
@@ -760,6 +781,12 @@ async function main() {
     console.log(chalk.gray('⏸️  Session will be saved and you can press ENTER to exit\n'));
 
     try {
+      // Debug: Show API key length before passing to Rust
+      if (process.env.DEBUG) {
+        console.error(`[DEBUG] API Key length: ${config.api_key.length}`);
+        console.error(`[DEBUG] API Key preview: ${config.api_key.substring(0, 20)}...${config.api_key.slice(-10)}`);
+      }
+
       // Pass config to Rust binary via environment variables
       const env = {
         ...process.env,
@@ -769,10 +796,31 @@ async function main() {
         EX_G_SE_MODEL: config.model,
       };
 
-      // Run the Rust binary (it will save directly to ~/.ex-g-se/sessions/)
-      execSync(`"${binaryPath}"`, { stdio: 'inherit', env });
+      // Run the Rust binary with proper stdin forwarding (especially on Windows)
+      const child = spawn(binaryPath, [], {
+        stdio: 'inherit',
+        env,
+        shell: true, // Required on Windows for proper path handling
+      });
+
+      // Wait for the binary to finish
+      await new Promise((resolve, reject) => {
+        child.on('close', (code) => {
+          if (code === 0 || code === null) {
+            resolve();
+          } else {
+            reject(new Error(`Binary exited with code ${code}`));
+          }
+        });
+        child.on('error', (err) => {
+          reject(err);
+        });
+      });
     } catch (e) {
-      // Binary exited (normal)
+      // Binary exited (normal or error)
+      if (e.message && !e.message.includes('exited with code')) {
+        console.error(chalk.red('\n❌ Error:'), e.message);
+      }
     }
 
     // The Rust binary now handles everything:

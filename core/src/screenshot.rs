@@ -174,13 +174,16 @@ mod windows_impl {
             // Capture screen
             BitBlt(hdc_mem, 0, 0, width, height, hdc, 0, 0, 0x00CC0020); // SRCCOPY
 
-            // Convert to image
+            // Convert to image (handle both positive and negative height)
             let buffer_len = (width.abs() * height.abs() * 4) as usize;
             let mut buffer = vec![0u8; buffer_len];
             ptr::copy_nonoverlapping(bits as *const u8, buffer.as_mut_ptr(), buffer_len);
 
             use image::RgbaImage;
-            let img: RgbaImage = ImageBuffer::from_raw(width as u32, height as u32, buffer)
+            // Use absolute values for width/height to handle negative height
+            let abs_width = width.abs() as u32;
+            let abs_height = height.abs() as u32;
+            let img: RgbaImage = ImageBuffer::from_raw(abs_width, abs_height, buffer)
                 .ok_or_else(|| anyhow!("Failed to create image buffer"))?;
 
             // Save as PNG

@@ -169,68 +169,13 @@ function prompt(rl, question) {
 
 function promptPassword(rl, question) {
   return new Promise((resolve) => {
-    // Pause readline to avoid conflicts
-    rl.pause();
-
-    process.stdout.write(question);
-    process.stdin.setRawMode(true);
-    process.stdin.resume();
-    process.stdin.setEncoding('utf8');
-
-    let password = '';
-
-    const onData = (char) => {
-      // Enter/Return - submit password
-      if (char === '\r' || char === '\n') {
-        // Drain any remaining input
-        process.stdin.setRawMode(false);
-        const buffer = Buffer.alloc(1024);
-        try {
-          process.stdin.read(buffer);
-        } catch (e) {
-          // Ignore
-        }
-        process.stdin.pause();
-        process.stdin.removeListener('data', onData);
-        process.stdout.write('\n');
-
-        // Resume readline for next prompt
-        rl.resume();
-        resolve(password);
-        return;
-      }
-
-      // Ctrl+C or Ctrl+D - exit
-      if (char === '\u0003' || char === '\u0004') {
-        process.stdout.write('\n');
-        process.stdin.setRawMode(false);
-        process.stdin.pause();
-        process.stdin.removeListener('data', onData);
-        rl.close();
-        process.exit(0);
-        return;
-      }
-
-      // Backspace/Delete - remove last character
-      if (char === '\u007f' || char === '\b') {
-        if (password.length > 0) {
-          password = password.slice(0, -1);
-          process.stdout.write('\b \b');
-        }
-        return;
-      }
-
-      // Ignore control characters (except those handled above)
-      if (char.charCodeAt(0) < 32 && char !== '\r' && char !== '\n') {
-        return;
-      }
-
-      // Accept all other characters (including multi-byte UTF-8)
-      password += char;
-      process.stdout.write('*');
-    };
-
-    process.stdin.on('data', onData);
+    // Use Node.js readline built-in password masking (more reliable)
+    // This avoids raw mode issues with copy-paste
+    rl.question(question, {
+      hideEchoBack: true  // This masks input with platform-native method
+    }, (password) => {
+      resolve(password || '');
+    });
   });
 }
 
@@ -272,6 +217,19 @@ async function config() {
     console.error('   Astuce: Collez votre clé lentement ou tapez-la manuellement\n');
     rl.close();
     process.exit(1);
+  }
+
+  // Special check for Z.AI keys (contain dots)
+  if (provider === 'z.ai' && !apiKey.includes('.')) {
+    console.warn('\n⚠️  Les clés Z.AI contiennent normalement un point (.)');
+    console.warn('   Exemple: d1f1...fd12.U7FS...ABGf');
+    console.warn('   Votre clé semble incomplète.\n');
+    const confirm = await prompt(rl, 'Continuer quand même ? (oui/non): ');
+    if (confirm.toLowerCase() !== 'oui' && confirm.toLowerCase() !== 'o' && confirm.toLowerCase() !== 'yes' && confirm.toLowerCase() !== 'y') {
+      console.log('❌ Annulé');
+      rl.close();
+      process.exit(0);
+    }
   }
 
   console.log(`✅ API key reçue (${apiKey.length} caractères)`);
@@ -387,10 +345,127 @@ async function config() {
 }
 
 // ============================================================================
+// STYLE CONFIG FUNCTION
+// ============================================================================
+
+/**
+ * Configure le style guide pour la génération de scripts
+ */
+async function configStyle() {
+  console.log('\n🎨 Configuration du Style Guide\n');
+  console.log('Ce style guide sera utilisé pour générer vos scripts et posts sociaux.');
+  console.log('Décrivez votre DA artistique, ton, style, etc.\n');
+
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+
+  // Check if EXG.md already exists
+  const configDir = path.join(os.homedir(), '.config', 'ex-g-se');
+  const stylePath = path.join(configDir, 'EXG.md');
+
+  let existingContent = '';
+  if (fs.existsSync(stylePath)) {
+    existingContent = fs.readFileSync(stylePath, 'utf8');
+    console.log('📁 Un style guide existe déjà:');
+    console.log('─'.repeat(60));
+    console.log(existingContent);
+    console.log('─'.repeat(60));
+
+    const overwrite = await prompt(rl, '\nModifier ? (oui/non): ');
+    if (overwrite.toLowerCase() !== 'oui' && overwrite.toLowerCase() !== 'yes' && overwrite.toLowerCase() !== 'o' && overwrite.toLowerCase() !== 'y') {
+      console.log('❌ Annulé');
+      rl.close();
+      process.exit(0);
+    }
+  }
+
+  console.log('\n📝 Décrivez votre style (appuyez sur Entrée quand vous avez fini):\n');
+  console.log('Exemples de choses à inclure:');
+  console.log('  • Ton: humoristique, professionnel, éducatif, etc.');
+  console.log('  • Style: "build in public", technique, accessible, etc.');
+  console.log('  • Format: préférences pour emojis, longueurs, structure');
+  console.log('  • Thèmes: sujets que vous aimez aborder');
+  console.log('  • Langue: français, anglais, multilingue, etc.\n');
+
+  console.log('─'.repeat(60));
+
+  const lines = [];
+  const timer = setInterval(() => {
+    // Keep alive
+  }, 10000);
+
+  try {
+    const input = await new Promise((resolve) => {
+      let buffer = '';
+
+      const readLine = () => {
+        rl.question('', (line) => {
+          if (line === '' && buffer === '') {
+            // Empty first line - start collecting
+            readLine();
+          } else if (line === '') {
+            // Empty line means done
+            resolve(buffer);
+          } else {
+            buffer += line + '\n';
+            readLine();
+          }
+        });
+      };
+
+      readLine();
+    });
+
+    lines.push(input);
+  } finally {
+    clearInterval(timer);
+  }
+
+  const styleContent = lines.join('\n').trim();
+
+  if (!styleContent || styleContent.length < 50) {
+    console.error('\n❌ Style guide trop court (minimum 50 caractères)');
+    rl.close();
+    process.exit(1);
+  }
+
+  // Save to EXG.md
+  fs.mkdirSync(configDir, { recursive: true });
+  fs.writeFileSync(stylePath, styleContent);
+
+  console.log('\n' + '='.repeat(60));
+  console.log('✅ STYLE GUIDE SAUVEGARDÉ');
+  console.log('='.repeat(60));
+  console.log(`\n📁 Fichier: ${stylePath}`);
+  console.log(`📏 Taille: ${styleContent.length} caractères`);
+  console.log('\n💡 Ce style sera automatiquement appliqué à:');
+  console.log('   • Scripts théâtraux');
+  console.log('   • Posts LinkedIn');
+  console.log('   • Threads Twitter/X');
+  console.log('   • Posts Bluesky');
+  console.log('   • Articles Dev.to/Hashnode');
+  console.log('   • Posts Mastodon');
+  console.log('   • Résumés de blog\n');
+
+  rl.close();
+}
+
+// ============================================================================
 // RUN
 // ============================================================================
 
-config().catch(error => {
-  console.error('\n❌ Erreur:', error.message);
-  process.exit(1);
+// Check command
+const command = process.argv[2];
+
+if (command === 'style') {
+  configStyle().catch(error => {
+    console.error('\n❌ Erreur:', error.message);
+    process.exit(1);
+  });
+} else {
+  config().catch(error => {
+    console.error('\n❌ Erreur:', error.message);
+    process.exit(1);
 });

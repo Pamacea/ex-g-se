@@ -153,25 +153,59 @@ impl AIScriptGenerator {
         !self.config.api_key.is_empty()
     }
 
+    /// Load style guide from ~/.config/ex-g-se/EXG.md if exists
+    fn load_style_guide(&self) -> Option<String> {
+        let config_dir = dirs::home_dir()?
+            .join(".config")
+            .join("ex-g-se");
+
+        let style_path = config_dir.join("EXG.md");
+
+        if !style_path.exists() {
+            return None;
+        }
+
+        match fs::read_to_string(&style_path) {
+            Ok(content) => {
+                eprintln!("[Style] ✓ Loaded style guide from EXG.md ({} chars)", content.len());
+                Some(content)
+            }
+            Err(e) => {
+                eprintln!("[Style] ⚠ Failed to load EXG.md: {}", e);
+                None
+            }
+        }
+    }
+
     /// Generate script from session data with full AI analysis
     pub async fn generate(&self, input: &ScriptGenerationInput) -> Result<String> {
         if !self.is_configured() {
+            eprintln!("[AI] No API configuration found, using fallback script");
             return Ok(Self::generate_fallback_script(input));
         }
 
         let prompt = self.build_detailed_prompt(input);
 
-        let script_content = match self.config.provider.as_str() {
-            "openai" => self.call_openai(&prompt).await?,
-            "anthropic" => self.call_anthropic(&prompt).await?,
-            "zai" => self.call_zai(&prompt).await?,
-            _ => self.call_openai(&prompt).await?,
+        eprintln!("[AI] Generating script with provider: {}", self.config.provider);
+
+        // Simplified: only Anthropic is special, everyone else uses OpenAI-compatible
+        let script_content = if self.config.provider == "anthropic" {
+            self.call_anthropic(&prompt).await?
+        } else {
+            // Works for: openai, zai, z.ai, together, groq, and any OpenAI-compatible provider
+            self.call_openai_compatible(&prompt).await?
         };
+
+        if script_content.contains("Error:") || script_content.contains("**Error:**") {
+            eprintln!("[AI] API returned an error response");
+        } else {
+            eprintln!("[AI] Script generated successfully ({} chars)", script_content.len());
+        }
 
         Ok(script_content)
     }
 
-    /// Build detailed prompt for AI with code and screenshot analysis
+    /// Build detailed prompt for AI with two-part output (theatrical + social media)
     fn build_detailed_prompt(&self, input: &ScriptGenerationInput) -> String {
         // 🆕 Generate conversation first and use it as context
         let conversation_md = generate_conversation_markdown(input);
@@ -179,15 +213,31 @@ impl AIScriptGenerator {
         let mut prompt = String::new();
 
         // Use conversation as the primary context
-        prompt.push_str("# Development Session Script Generation\n\n");
+        prompt.push_str("# Development Session Content Generation\n\n");
         prompt.push_str("Below is the complete conversation and context from a development session.\n\n");
         prompt.push_str("---\n\n");
         prompt.push_str(&conversation_md);
         prompt.push_str("\n---\n\n");
 
-        // Add the script generation request
-        prompt.push_str("\n## Task: Generate Theatrical Script\n\n");
-        prompt.push_str("Based on the conversation and context above, generate an engaging **theatrical script** that tells the story of this development session.\n\n");
+        // 🆕 Load and inject style guide if exists
+        if let Some(style_guide) = self.load_style_guide() {
+            prompt.push_str("\n## ========================================\n");
+            prompt.push_str("## STYLE GUIDE (User Preferences)\n");
+            prompt.push_str("## ========================================\n\n");
+            prompt.push_str(&style_guide);
+            prompt.push_str("\n\n---\n");
+            prompt.push_str("**IMPORTANT:** Apply this style guide to ALL generated content below!\n");
+            prompt.push_str("---\n\n");
+        }
+
+        // ========================================
+        // PART 1: Theatrical Script for Video
+        // ========================================
+        prompt.push_str("\n## ========================================\n");
+        prompt.push_str("## PART 1: THEATRICAL SCRIPT (FOR VIDEO)\n");
+        prompt.push_str("## ========================================\n\n");
+
+        prompt.push_str("Generate an engaging **theatrical script** that tells the story of this development session.\n\n");
 
         prompt.push_str("### Requirements:\n\n");
         prompt.push_str("1. **Structure:** Use Acts and Scenes (theatrical format)\n");
@@ -213,13 +263,76 @@ impl AIScriptGenerator {
         prompt.push_str("> [Relevant technical details from the code/project]\n\n");
         prompt.push_str("---\n\n");
 
-        prompt.push_str("**IMPORTANT:**\n");
-        prompt.push_str("- Use the REAL user prompts from the conversation section\n");
-        prompt.push_str("- Reference the ACTUAL files that were modified\n");
-        prompt.push_str("- Show DEVELOPER'S THOUGHT PROCESS based on their requests\n");
-        prompt.push_str("- Make it ENGAGING like a story\n");
-        prompt.push_str("- Connect the prompts to the code changes\n");
-        prompt.push_str("- Explain the WHY behind each action\n");
+        // ========================================
+        // PART 2: Social Media Posts
+        // ========================================
+        prompt.push_str("\n## ========================================\n");
+        prompt.push_str("## PART 2: SOCIAL MEDIA POSTS\n");
+        prompt.push_str("## ========================================\n\n");
+
+        prompt.push_str("Now generate social media posts based on this development session.\n\n");
+        prompt.push_str("### Generate posts for:\n\n");
+        prompt.push_str("1. **LinkedIn Post** - Professional, detailed, showcases technical achievement\n");
+        prompt.push_str("   - Focus on business value, technical challenge, solution\n");
+        prompt.push_str("   - 3-5 paragraphs, professional tone\n");
+        prompt.push_str("   - Include hashtags like #Development #Coding #Tech\n\n");
+
+        prompt.push_str("2. **Twitter/X Thread** - Concise, thread-style, technical highlights\n");
+        prompt.push_str("   - Main tweet + 2-3 reply tweets\n");
+        prompt.push_str("   - Focus on key insights, quick wins, interesting discoveries\n");
+        prompt.push_str("   - Use tech hashtags, keep it punchy\n\n");
+
+        prompt.push_str("3. **Bluesky Post** - Developer community focused, authentic\n");
+        prompt.push_str("   - Share learnings, what worked/didn't work\n");
+        prompt.push_str("   - Casual but technical tone\n\n");
+
+        prompt.push_str("4. **Dev.to/Hashnode Article** - Tutorial style, educational\n");
+        prompt.push_str("   - Title: How I [solved X] using [Y]\n");
+        prompt.push_str("   - Structure: Problem → Solution → Code Examples → Takeaway\n");
+        prompt.push_str("   - Include code snippets from the session\n\n");
+
+        prompt.push_str("5. **Mastodon Post** - Open source community, transparent\n");
+        prompt.push_str("   - Share the journey, lessons learned\n");
+        prompt.push_str("   - Include relevant hashtags\n\n");
+
+        prompt.push_str("6. **Personal Blog Summary** - Reflective, detailed\n");
+        prompt.push_str("   - What I built, why, how, challenges faced\n");
+        prompt.push_str("   - Technical deep-dive\n\n");
+
+        prompt.push_str("### Content Guidelines:\n\n");
+        prompt.push_str("- **Be Authentic:** Share real challenges and learnings\n");
+        prompt.push_str("- **Be Specific:** Reference actual files, technologies, decisions\n");
+        prompt.push_str("- **Be Engaging:** Hook readers with interesting insights\n");
+        prompt.push_str("- **Add Value:** Teach something from your experience\n");
+        prompt.push_str("- **Use Emojis:** Sparingly but effectively for visual appeal\n\n");
+        prompt.push_str("- **Include Call-to-Actions:** Ask questions, encourage discussion\n\n");
+
+        prompt.push_str("### Format for Social Posts:\n\n");
+        prompt.push_str("---\n\n");
+        prompt.push_str("### 🚀 LinkedIn\n\n");
+        prompt.push_str("[Post content here]\n\n");
+        prompt.push_str("#hashtags #Tech\n\n");
+        prompt.push_str("---\n\n");
+        prompt.push_str("### 🐦 Twitter/X\n\n");
+        prompt.push_str("**Tweet 1/3:** [Main insight]\n\n");
+        prompt.push_str("**Reply 1:** [Elaboration]\n\n");
+        prompt.push_str("**Reply 2:** [Call to action]\n\n");
+        prompt.push_str("---\n\n");
+        prompt.push_str("### 🦋 Bluesky\n\n");
+        prompt.push_str("[Post content here]\n\n");
+        prompt.push_str("---\n\n");
+        prompt.push_str("### 📝 Dev.to/Hashnode\n\n");
+        prompt.push_str("**Title:** [Catchy title]\n\n");
+        prompt.push_str("[Article content with code blocks]\n\n");
+        prompt.push_str("---\n\n");
+        prompt.push_str("### 🐘 Mastodon\n\n");
+        prompt.push_str("[Post content here]\n\n");
+        prompt.push_str("---\n\n");
+        prompt.push_str("### 📝 Personal Blog Summary\n\n");
+        prompt.push_str("[Summary content]\n\n");
+        prompt.push_str("---\n\n");
+
+        prompt.push_str("**Make each platform's content unique and tailored to that audience!**\n\n");
 
         prompt
     }
@@ -279,21 +392,35 @@ impl AIScriptGenerator {
         prompt
     }
 
-    /// Call OpenAI API
-    async fn call_openai(&self, prompt: &str) -> Result<String> {
+    /// Call OpenAI-compatible API (works with OpenAI, Z.AI, Together, Groq, etc.)
+    async fn call_openai_compatible(&self, prompt: &str) -> Result<String> {
+        // Build URL with fallback
         let url = if self.config.api_url.is_empty() {
             "https://api.openai.com/v1/chat/completions".to_string()
         } else {
-            format!("{}/chat/completions", self.config.api_url)
+            // Handle both full URLs and base URLs
+            let base = self.config.api_url.trim_end_matches('/');
+            if base.contains("/chat/completions") {
+                base.to_string()
+            } else {
+                format!("{}/chat/completions", base)
+            }
         };
 
+        // Default models per provider
         let model = if self.config.model.is_empty() {
-            "gpt-4o"
+            match self.config.provider.as_str() {
+                "zai" | "z.ai" => "glm-5",
+                "together" => "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
+                "groq" => "llama-3.3-70b-versatile",
+                _ => "gpt-4o"
+            }
         } else {
             &self.config.model
         };
 
-        let request = json!({
+        // Build request (standard OpenAI format)
+        let mut request = json!({
             "model": model,
             "messages": [
                 {
@@ -309,6 +436,18 @@ impl AIScriptGenerator {
             "max_tokens": 4000
         });
 
+        // Add provider-specific extras
+        if self.config.provider == "zai" || self.config.provider == "z.ai" {
+            if let Some(obj) = request.as_object_mut() {
+                obj.insert("thinking".to_string(), json!({"type": "enabled"}));
+                obj.insert("temperature".to_string(), json!(1.0));
+                obj.insert("max_tokens".to_string(), json!(4096));
+            }
+        }
+
+        eprintln!("[AI] Calling {} API: {}", self.config.provider.to_uppercase(), url);
+        eprintln!("[AI] Model: {}", model);
+
         let response = self.client
             .post(&url)
             .header("Authorization", format!("Bearer {}", self.config.api_key))
@@ -317,12 +456,38 @@ impl AIScriptGenerator {
             .send()
             .await?;
 
+        let status = response.status();
+        eprintln!("[AI] Status: {}", status);
+
+        if !status.is_success() {
+            let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+            return Ok(format!("**Error:** API returned status {} - {}\n\n**Response:**\n```\n{}\n```\n\n**Tip:** Check your API key and model at your provider's dashboard",
+                status.as_u16(),
+                status.canonical_reason().unwrap_or("Unknown"),
+                error_text
+            ));
+        }
+
         let result: serde_json::Value = response.json().await?;
 
-        Ok(result["choices"][0]["message"]["content"]
-            .as_str()
-            .unwrap_or("Error: No response from AI")
-            .to_string())
+        // Extract content from standard OpenAI format
+        if let Some(content) = result["choices"][0]["message"]["content"].as_str() {
+            eprintln!("[AI] ✓ Script generated ({} chars)", content.len());
+            return Ok(content.to_string());
+        }
+
+        // Fallback: try alternative formats
+        if let Some(content) = result["output"]["choices"][0]["message"]["content"].as_str() {
+            eprintln!("[AI] ✓ Script generated from alternative format ({} chars)", content.len());
+            return Ok(content.to_string());
+        }
+
+        // Error: unexpected format
+        Ok(format!("**Error: Unexpected response format**\n\n**Response Structure:**\n```json\n{}\n```\n\n**Expected:** `result[\"choices\"][0][\"message\"][\"content\"]`\n\n**Provider:** {} ({})\n\n**Tip:** This provider may have changed their API format. Check their documentation.",
+            serde_json::to_string_pretty(&result).unwrap_or_else(|_| "Cannot serialize".to_string()),
+            self.config.provider,
+            url
+        ))
     }
 
     /// Call Anthropic API
@@ -368,149 +533,6 @@ impl AIScriptGenerator {
             .to_string())
     }
 
-    /// Call ZAI API
-    async fn call_zai(&self, prompt: &str) -> Result<String> {
-        // ZAI uses OpenAI-compatible format but with different URL structure
-        let base_url = if self.config.api_url.is_empty() {
-            "https://api.z.ai/api/paas/v4".to_string()
-        } else {
-            self.config.api_url.trim_end_matches('/').to_string()
-        };
-
-        let full_url = format!("{}/chat/completions", base_url);
-
-        let model = if self.config.model.is_empty() {
-            "glm-5"
-        } else {
-            &self.config.model
-        };
-
-        // Z.AI specific request with thinking parameter
-        let request = json!({
-            "model": model,
-            "messages": [
-                {
-                    "role": "system",
-                    "content": "You are an expert technical writer and analyst. Generate engaging, insightful scripts from development sessions."
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            "thinking": {"type": "enabled"},
-            "max_tokens": 4096,
-            "temperature": 1.0
-        });
-
-        eprintln!("[AI] Calling Z.AI API: {}", full_url);
-        eprintln!("[AI] Model: {}", model);
-
-        let response = self.client
-            .post(&full_url)
-            .header("Authorization", format!("Bearer {}", self.config.api_key))
-            .header("Content-Type", "application/json")
-            .json(&request)
-            .send()
-            .await?;
-
-        let status = response.status();
-        eprintln!("[AI] Status: {}", status);
-
-        if !status.is_success() {
-            let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
-            return Ok(format!("**Error:** API returned status {} - {}\n\n**Response:**\n{}\n\n**Tip:** Check your API key and model name at https://cloud.z-ip.ai",
-                status.as_u16(),
-                status.canonical_reason().unwrap_or("Unknown"),
-                error_text
-            ));
-        }
-
-        let result: serde_json::Value = response.json().await?;
-        eprintln!("[AI] Response keys: {:?}", result.as_object().map(|o| o.keys().collect::<Vec<_>>()));
-
-        // Try standard format
-        if let Some(content) = result["choices"][0]["message"]["content"].as_str() {
-            return Ok(content.to_string());
-        }
-
-        // Try Z.AI specific format
-        if let Some(content) = result["output"]["choices"][0]["message"]["content"].as_str() {
-            return Ok(content.to_string());
-        }
-
-        // Debug: Show actual response structure
-        Ok(format!("**Error: Unexpected response format**\n\n**Response Structure:**\n```json\n{}\n```\n\n**Expected:** `result[\"choices\"][0][\"message\"][\"content\"]`\n\n**Tip:** The API response format may have changed. Check https://cloud.z-ip.ai for documentation.",
-            serde_json::to_string_pretty(&result).unwrap_or_else(|_| "Cannot serialize".to_string())
-        ))
-    }
-
-    /// Call OpenAI-compatible API with custom URL
-    async fn call_openai_with_url(&self, prompt: &str, url: &str) -> Result<String> {
-        let model = if self.config.model.is_empty() {
-            "gpt-4o"
-        } else {
-            &self.config.model
-        };
-
-        let request = json!({
-            "model": model,
-            "messages": [
-                {
-                    "role": "system",
-                    "content": "You are an expert technical writer and analyst. Generate engaging, insightful scripts from development sessions."
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            "temperature": 0.7,
-            "max_tokens": 4000
-        });
-
-        eprintln!("[AI] Calling API: {}", url);
-        eprintln!("[AI] Model: {}", model);
-
-        let response = self.client
-            .post(url)
-            .header("Authorization", format!("Bearer {}", self.config.api_key))
-            .header("Content-Type", "application/json")
-            .json(&request)
-            .send()
-            .await?;
-
-        // Check status code
-        let status = response.status();
-        eprintln!("[AI] Status: {}", status);
-
-        if !status.is_success() {
-            let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
-            return Ok(format!("**Error:** API returned status {} - {}\n\n**Response:**\n{}\n\n**Tip:** Check your API key and model name at https://cloud.z-ip.ai",
-                status.as_u16(),
-                status.canonical_reason().unwrap_or("Unknown"),
-                error_text
-            ));
-        }
-
-        let result: serde_json::Value = response.json().await?;
-        eprintln!("[AI] Response keys: {:?}", result.as_object().map(|o| o.keys().collect::<Vec<_>>()));
-
-        // Try multiple response formats
-        if let Some(content) = result["choices"][0]["message"]["content"].as_str() {
-            return Ok(content.to_string());
-        }
-
-        // Z.AI might use different format
-        if let Some(content) = result["output"]["choices"][0]["message"]["content"].as_str() {
-            return Ok(content.to_string());
-        }
-
-        // Debug: Show actual response structure
-        Ok(format!("**Error: Unexpected response format**\n\n**Response Structure:**\n```json\n{}\n```\n\n**Expected:** `result[\"choices\"][0][\"message\"][\"content\"]`\n\n**Tip:** The API response format may have changed. Check https://cloud.z-ip.ai for documentation.",
-            serde_json::to_string_pretty(&result).unwrap_or_else(|_| "Cannot serialize".to_string())
-        ))
-    }
 
     /// Generate fallback script without AI
     fn generate_fallback_script(input: &ScriptGenerationInput) -> String {

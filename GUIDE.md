@@ -145,11 +145,31 @@ exg config
 **Alternative: Environment Variables**
 
 ```bash
+# Linux/macOS
 export EX_G_SE_PROVIDER=openai
 export EX_G_SE_API_KEY=sk-...
 export EX_G_SE_API_URL=https://api.openai.com/v1  # Optional
 export EX_G_SE_MODEL=gpt-4o                        # Optional
 ```
+
+**Windows PowerShell:**
+
+```powershell
+# Set environment variables (for current session)
+$env:EX_G_SE_PROVIDER="z.ai"
+$env:EX_G_SE_API_KEY="your_api_key_here_with.dots"
+$env:EX_G_SE_API_URL="https://api.z.ai/api/paas/v4"
+$env:EX_G_SE_MODEL="glm-4.7-flash"
+
+# Then run EX-G-SE
+exg record
+```
+
+**Why use environment variables?**
+- ✅ Avoids copy-paste issues with special characters in API keys
+- ✅ No master password needed
+- ✅ Easy to switch between different providers/models
+- ✅ Perfect for testing and development
 
 ### First Recording
 

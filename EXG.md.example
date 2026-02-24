@@ -1,0 +1,224 @@
+# EX-G-SE Style Guide Template
+
+> This is an example style guide. Configure yours with `exg config style`
+
+---
+
+## My Developer Identity
+
+**Name:** [Your Name]
+**Focus:** [e.g., Full-stack Development, DevOps, AI/ML, Frontend, Backend]
+**Experience:** [e.g., 5+ years]
+
+---
+
+## Tone & Voice
+
+### Primary Tone
+- **Professional yet approachable** - Clear technical explanations with relatable examples
+- **Authentic & transparent** - Share both successes and failures
+- **Educational** - Focus on teaching and learning together
+
+### Personality Traits
+- Enthusiastic about clean code and best practices
+- Humble - admit mistakes and share lessons learned
+- Curious - always exploring new technologies
+- Practical - focus on real-world solutions
+
+---
+
+## Content Style
+
+### Language
+- **Primary:** English
+- **Secondary:** French (can switch when appropriate)
+
+### Writing Preferences
+- Use **bold** for emphasis sparingly
+- Use `code` for technical terms
+- Include code examples when relevant
+- Keep paragraphs short (2-3 sentences)
+- Use bullet points for clarity
+
+### Emoji Usage
+- ✅ Use sparingly for visual appeal
+- ✅ Tech-related: 🚀 🎯 🔧 💡 🐛 ✅ ❌
+- ❌ Avoid overuse or decorative emojis
+
+---
+
+## Platform-Specific Guidelines
+
+### LinkedIn
+- **Length:** 3-5 paragraphs
+- **Tone:** Professional, insightful
+- **Focus:** Business value, technical challenges, solutions
+- **CTA:** Ask questions to encourage discussion
+- **Hashtags:** #Development #Coding #Tech #SoftwareEngineering #[YourTechStack]
+
+### Twitter/X
+- **Format:** Thread (main + 2-3 replies)
+- **Style:** Concise, punchy, quick insights
+- **Focus:** Key learnings, quick wins, interesting discoveries
+- **Engagement:** Ask questions, share opinions
+- **Hashtags:** 2-3 max, relevant to topic
+
+### Bluesky
+- **Tone:** Developer community, authentic
+- **Style:** Casual but technical
+- **Focus:** What worked/didn't work, real experiences
+- **Community:** Engage with other devs
+
+### Dev.to / Hashnode
+- **Format:** Tutorial style, educational
+- **Structure:** Problem → Solution → Code Examples → Takeaway
+- **Content:** Step-by-step explanations with code snippets
+- **Tone:** Helpful, detailed, beginner-friendly where appropriate
+
+### Mastodon
+- **Audience:** Open source community
+- **Tone:** Transparent, technical
+- **Focus:** Journey, lessons learned, tools used
+- **Hashtags:** #opensource #dev #coding #[yourtech]
+
+### Personal Blog
+- **Style:** Reflective, detailed
+- **Content:** What I built, why, how, challenges faced
+- **Format:** Technical deep-dive with context
+- **Tone:** Personal narrative with technical substance
+
+---
+
+## Themes I Cover
+
+### Primary Topics
+- Clean Architecture & Design Patterns
+- Performance Optimization
+- Testing Best Practices
+- DevOps & CI/CD
+- Developer Experience
+- Open Source Contributions
+
+### Tech Stack Focus
+- **Frontend:** React, Next.js, TypeScript
+- **Backend:** Node.js, Rust, PostgreSQL
+- **Tools:** Git, Docker, Kubernetes
+- **AI/ML:** LLMs, RAG, Vector Databases
+
+### Content I Avoid
+- ❌ Pure self-promotion
+- ❌ Controversial opinions
+- ❌ Political discussions
+- ❌ Non-technical rants
+
+---
+
+## Build in Public Philosophy
+
+### What I Share
+- ✅ Successful projects and what I learned
+- ✅ Failed experiments and why they failed
+- ✅ Work in progress (WIP) updates
+- ✅ Behind-the-scenes of development
+- ✅ Tools and workflows I use
+
+### What I Don't Share
+- ❌ Confidential client information
+- ❌ Proprietary code/details
+- ❌ Negative comments about others
+- ❌ Personal complaints
+
+---
+
+## Sample Post Structures
+
+### Problem-Solving Format
+1. **Hook:** Brief statement of the problem
+2. **Context:** Why it mattered
+3. **Solution:** What I tried/did
+4. **Result:** Outcome and metrics
+5. **Learnings:** Key takeaways
+6. **CTA:** Question or next steps
+
+### Tutorial Format
+1. **Title:** How I [achieved X] with [Y]
+2. **Problem:** What I was trying to solve
+3. **Approach:** Step-by-step process
+4. **Code:** Relevant snippets
+5. **Challenges:** What I struggled with
+6. **Conclusion:** Final thoughts and resources
+
+### Reflection Format
+1. **Context:** What I've been working on
+2. **Journey:** The process and evolution
+3. **Lessons:** What I learned
+4. **Future:** What's next
+5. **Gratitude:** Shoutouts to community/tools
+
+---
+
+## Custom Instructions for AI
+
+When generating content for me:
+
+1. **Be Specific:** Reference actual files, technologies, decisions from the session
+2. **Add Value:** Teach something from my experience
+3. **Be Authentic:** Share real challenges, not just successes
+4. **Stay Concise:** Respect each platform's character limits
+5. **Engage Readers:** Include questions and call-to-actions
+6. **Use My Voice:** Match the tone described above
+7. **Technical Accuracy:** Ensure code examples and technical details are correct
+
+---
+
+## Examples
+
+### LinkedIn Post Example
+```
+Just spent 3 hours debugging a memory leak in our Rust service.
+
+The culprit? A recursive reference I missed in the struct definition.
+
+🔧 What I learned:
+• Always check for circular references in Rust
+• Use `cargo +nightly miri` for memory safety checks
+• Document ownership clearly in complex types
+
+The fix? Changed to `Weak<RefCell<T>>` and problem solved.
+
+💡 Memory safety is why I love Rust - the compiler catches what other languages would let slip into production.
+
+How do you handle memory management in your projects?
+#Rust #SoftwareEngineering #Debugging
+```
+
+### Twitter Thread Example
+```
+1/3 Just discovered a game-changing pattern for React hooks:
+
+Instead of multiple useState calls, use a single useReducer for complex state.
+
+Solved:
+- Prop drilling nightmares
+- State sync issues
+- Unnecessary re-renders
+
+2/3 Example:
+Instead of:
+const [name, setName] = useState()
+const [age, setAge] = useState()
+
+Use:
+const [state, dispatch] = useReducer(reducer, initialState)
+
+3/3 Your components become cleaner and state management is centralized.
+
+Try it on your next feature. Thank me later.
+
+#React #JavaScript #WebDev
+```
+
+---
+
+*Configure your own style guide with: `exg config style`*
+*This file should be saved at: ~/.config/ex-g-se/EXG.md*
