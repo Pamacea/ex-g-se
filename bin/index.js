@@ -571,7 +571,7 @@ function formatBytes(bytes) {
 // ============================================================================
 
 function showHelp() {
-  console.log(chalk.bold('\nEX-G-SE v0.6.2 - Ghost Mode Observability\n'));
+  console.log(chalk.bold('\nEX-G-SE v0.6.3 - Ghost Mode Observability\n'));
   console.log(chalk.cyan('Commands:\n'));
   console.log('  exg, exg --help, exg -h   Show this help message');
   console.log('  exg version, exg --version, exg -v  Show version information');
