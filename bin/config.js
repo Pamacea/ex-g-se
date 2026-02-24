@@ -381,7 +381,7 @@ async function configStyle() {
     }
   }
 
-  console.log('\n📝 Décrivez votre style (appuyez sur Entrée quand vous avez fini):\n');
+  console.log('\n📝 Décrivez votre style en une phrase ou paragraphe:');
   console.log('Exemples de choses à inclure:');
   console.log('  • Ton: humoristique, professionnel, éducatif, etc.');
   console.log('  • Style: "build in public", technique, accessible, etc.');
@@ -389,44 +389,10 @@ async function configStyle() {
   console.log('  • Thèmes: sujets que vous aimez aborder');
   console.log('  • Langue: français, anglais, multilingue, etc.\n');
 
-  console.log('─'.repeat(60));
+  const styleContent = await prompt(rl, 'Votre style: ');
 
-  const lines = [];
-  const timer = setInterval(() => {
-    // Keep alive
-  }, 10000);
-
-  try {
-    const input = await new Promise((resolve) => {
-      let buffer = '';
-
-      const readLine = () => {
-        rl.question('', (line) => {
-          if (line === '' && buffer === '') {
-            // Empty first line - start collecting
-            readLine();
-          } else if (line === '') {
-            // Empty line means done
-            resolve(buffer);
-          } else {
-            buffer += line + '\n';
-            readLine();
-          }
-        });
-      };
-
-      readLine();
-    });
-
-    lines.push(input);
-  } finally {
-    clearInterval(timer);
-  }
-
-  const styleContent = lines.join('\n').trim();
-
-  if (!styleContent || styleContent.length < 50) {
-    console.error('\n❌ Style guide trop court (minimum 50 caractères)');
+  if (!styleContent || styleContent.length < 20) {
+    console.error('\n❌ Style guide trop court (minimum 20 caractères)');
     rl.close();
     process.exit(1);
   }
@@ -468,4 +434,5 @@ if (command === 'style') {
   config().catch(error => {
     console.error('\n❌ Erreur:', error.message);
     process.exit(1);
-});
+  });
+}
